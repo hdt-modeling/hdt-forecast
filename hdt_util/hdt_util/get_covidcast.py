@@ -2,12 +2,14 @@
 import covidcast
 import requests_cache
 
+DEFAULT_CACHE_LOC = './data/cache_loc'
+
 class CovidcastGetter:
     """
     Class for obtaining covidcast data
     """
 
-    def __init__(self, cache_loc):
+    def __init__(self, cache_loc=DEFAULT_CACHE_LOC):
         self._set_requests_cache(cache_loc)
 
     def _set_requests_cache(self, cache_loc, backend='sqlite'):
