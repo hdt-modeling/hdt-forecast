@@ -16,3 +16,9 @@ Install the utilities package with
 ```
 pip install -e hdt_util
 ```
+
+Run the tests for `hdt_util` with
+```
+cd hdt_util/tests
+pytest
+```
