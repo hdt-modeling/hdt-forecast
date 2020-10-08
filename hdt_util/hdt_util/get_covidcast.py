@@ -2,7 +2,7 @@
 import covidcast
 import requests_cache
 
-DEFAULT_CACHE_LOC = './data/cache_loc'
+DEFAULT_CACHE_LOC = './data/cache_loc.sqlite'
 
 class CovidcastGetter:
     """
