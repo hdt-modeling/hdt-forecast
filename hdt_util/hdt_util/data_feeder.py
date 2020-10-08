@@ -93,8 +93,9 @@ class Valerie_and_Larry_feeder(Basic_feeder):
             median_home_dwell_time : The median time spent at home for all devices at this location for this time period, in minutes
     '''
     
-    def __init__(self, cache_loc=None):
+    def __init__(self, cache_loc=None, merge=True):
         super(Valerie_and_Larry_feeder, self).__init__(cache_loc)
+        self.merge = merge
             
     def get_data(self, 
                  source='jhu-csse', 
@@ -122,6 +123,11 @@ class Valerie_and_Larry_feeder(Basic_feeder):
             2 : 'full_time_work_prop',
             3 : 'part_time_work_prop',
             4 : 'median_home_dwell_time'
+            
+        Returns:
+        ========
+        if self.merge is True, return full_data, the inner merge of case_data and mobility_data
+        if self.merge is False, return cases_data and mobility_data.
         '''
         
         assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
@@ -135,5 +141,22 @@ class Valerie_and_Larry_feeder(Basic_feeder):
                                                forecast_date=end_date,
                                                geo_type=level)
         
-        return case_data, mobility_data
+        if case_data is not None:
+            case_data = case_data[['geo_value', 'time_value', 'value']]
+            case_data.rename({'value':'case_value'}, axis=1, inplace=True)
+            case_data.reset_index(inplace=True, drop=True)
+        if mobility_data is not None:
+            mobility_data = mobility_data[['geo_value', 'time_value', 'value']]
+            mobility_data.rename({'value':'mobility_value'}, axis=1, inplace=True)
+            mobility_data.reset_index(inplace=True, drop=True)
+        
+        if not self.merge:
+            return case_data, mobility_data
+        else:
+            if mobility_data is None:
+                full_data = None
+                return full_data
+            if case_data is not None:
+                full_data = case_data.merge(mobility_data, on=['geo_value', 'time_value'], how='inner')
+                return full_data
         
