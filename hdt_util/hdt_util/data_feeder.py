@@ -5,6 +5,7 @@ In this file, each model will have its data feeder. Class names will be the mode
 from .get_covidcast import CovidcastGetter
 import pandas as pd
 import numpy as np
+import datetime
 from datetime import date
 
 class Basic_feeder:
@@ -43,8 +44,6 @@ class Basic_feeder:
         assert level in ['state', 'county'], 'level should be one of \'state\' and \'county\''
         assert isinstance(count, bool), 'count should be True or False'
         assert isinstance(cumulated, bool), 'cumulated should be True or False'
-        assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
-        assert 1<=mobility_level<=4, 'mobility_level should be an integer between 1 and 4'
         
         #correct values for later calls
         if end_date is None:
@@ -58,11 +57,11 @@ class Basic_feeder:
         else:
             signal += '_prop'
         
-        case_data = self.data_loader(data_source=source,
-                                     signal=signal,
-                                     start_date=start_date,
-                                     forecast_date=end_date,
-                                     geo_type=level)
+        case_data = self.data_loader.query(data_source=source,
+                                           signal=signal,
+                                           start_date=start_date,
+                                           forecast_date=end_date,
+                                           geo_type=level)
         
         return case_data
 
@@ -125,13 +124,16 @@ class Valerie_and_Larry_feeder(Basic_feeder):
             4 : 'median_home_dwell_time'
         '''
         
+        assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
+        assert 1<=mobility_level<=4, 'mobility_level should be an integer between 1 and 4'
+        
         case_data = self.query_response(source, signal, start_date, end_date, level, count, cumulated)
         
-        geo_data = self.data_loader(data_source='safegraph',
-                                    signal=self.safegraph[mobility_level],
-                                    start_date=start_date,
-                                    forecast_date=end_date,
-                                    geo_type=level)
+        mobility_data = self.data_loader.query(data_source='safegraph',
+                                               signal=self.safegraph_keys[mobility_level],
+                                               start_date=start_date,
+                                               forecast_date=end_date,
+                                               geo_type=level)
         
-        return case_data, geo_data
+        return case_data, mobility_data
         
