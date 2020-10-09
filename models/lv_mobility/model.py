@@ -40,8 +40,8 @@ class lv_mobility:
             M (numpy array, shape=(num_intervals)): mobility time series
             DC (numpy array, shape=(num_intervals)): death curve 
             L (int): length of interval you want to evaluate over
-            A (float): 
-            alpha (float): b_0 term in Larry and Valerie's doc
+            A (float): b_0 term in Larry and Valerie's doc
+            alpha (float): multiplier for probit function
             beta (float): b_1 term in Larry and Valerie's doc
             mu (float): mean for normal distribution  in model
             sig (float): std for normal distribution in model
