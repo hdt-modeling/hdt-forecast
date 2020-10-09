@@ -8,7 +8,7 @@ def optim(model, M, DC, y_true, loss, args=None):
     A method for constrained optimization using dual_annealing from scipy.optimize for lv_mobility.
 
     Args:
-        M (numpy array): mobility curve
+        M (numpy array): mobility time series
         DC (numpy array): death curve
         y_true (numpy array): observed value of cases
         loss: loss function 
