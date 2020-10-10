@@ -78,7 +78,7 @@ if __name__ == "__main__":
             DC=ft[:25],
             y_true=y_true,
             optimizer=optimizer.optim,
-            loss=l1,
+            loss=hellinger,
             args=None
         )
         theta[i, :] = list(model.args.values())

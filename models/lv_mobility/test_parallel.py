@@ -95,7 +95,7 @@ if __name__ == "__main__":
         m = A[i, :l]
         pool.apply_async(
             worker,
-            [i, m, ft, y_true, l1,  None],
+            [i, m, ft, y_true, hellinger,  None],
             callback=callback,
             error_callback=error_callback,
         )

@@ -23,7 +23,7 @@ class lv_mobility:
         Method for fitting model parameters
 
         Args:
-            M (numpy array, shape=(num_features, num_intervals)): mobility time series
+            M (numpy array, shape=(num_intervals)): mobility time series
             DC (numpy array, shape=(num_intervals)): deatch curve
             y_true: observed values
             optimizer: optimizer for model
