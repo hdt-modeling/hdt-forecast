@@ -15,9 +15,9 @@ def optim(model, M, DC, y_true, loss, args=None):
         args (dict): ALPHA, BETA, MU, array of parameters for initialization
     """
     if args == None:
-        ALPHA = numpy.linspace(-2, 2, num=6)
-        BETA = numpy.linspace(-2, 2, num=6)
-        MU = numpy.linspace(0.1, 0.5, num=5)
+        ALPHA = numpy.linspace(-2, 2, num=1)
+        BETA = numpy.linspace(-2, 2, num=1)
+        MU = numpy.linspace(0.1, 0.5, num=1)
     else:
         ALPHA = args["ALPHA"]
         BETA = args["BETA"]

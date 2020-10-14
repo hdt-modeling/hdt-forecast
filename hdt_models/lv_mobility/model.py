@@ -4,6 +4,7 @@ from scipy.stats import gamma, norm
 from lv_mobility.optimizer import optim
 from lv_mobility.loss import hellinger
 
+
 class LVMM:
     """
     An implementation of Larry and Valerie's mobility model 
@@ -79,26 +80,25 @@ class LVMM:
         return abs(A)*out
 
     def eval(self, l1, l2):
-        assert(l1 > l2, "l1 should be less than l2")
-        assert(l2 > len(self.args['predictions'])
-               or l1 < 0, "index is out of bounds")
+        assert l1 < l2, "l1 should be less than l2"
+        assert l2 <= len(self.args['predictions']
+                        ) or l1 >= 0, "index is out of bounds"
 
         return self.args['predictions'][l1:l2]
 
-    def forecast(self, l, M=None, DC=None, impute_method='same', impute_function=None):
-        assert(l<len(M), "Length of interval l is smaller than the mobility time series M")
-        assert(impute_method != "custom" and impute_function != None, "method incompatible with function")
+    def forecast(self, l, M=[], DC=[], impute_method='same', impute_function=None):
+        assert not (impute_method != "custom" and impute_function != None), "method incompatible with function"
 
-        if M == None:
+        if not M:
             M = self.args["M"]
 
         if impute_method == 'same':
             L = len(M)
-            M = numpy.concatenate([M, M[-1]*numpy.ones(L-l)])
+            M = numpy.concatenate([M, M[-1]*numpy.ones(l-L)])
 
-        if DC == None:
+        if not DC:
             t = numpy.linspace(start=0, stop=l, num=l+1)
             DC = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
             DC = (DC/sum(DC)) * 0.03
 
-        return self._eval(M, DC, l, self.args['A'], self.args['alpha'], self.args['beta'], self.args['mu'], self.args['sig'])
+        return self._eval(M, DC[:l], l, self.args['A'], self.args['alpha'], self.args['beta'], self.args['mu'], self.args['sig'])
