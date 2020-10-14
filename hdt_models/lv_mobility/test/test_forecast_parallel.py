@@ -74,7 +74,7 @@ if __name__ == "__main__":
             C = numpy.concatenate([C, we(cases[I])])
     #######################################################
 
-    l = 15
+    l = 18
     t = numpy.linspace(start=0, stop=l, num=l+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     pool.join()
 
     # plotting predictions and observations for State[i]
-    l2 = 21
+    l2 = 25
     t = numpy.linspace(start=0, stop=l2, num=l2+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
@@ -107,10 +107,11 @@ if __name__ == "__main__":
 
     for i in range(51):
         y_true = Y[i, :l2]
-        m = A[i, :l2]
+        m_same = numpy.concatenate([A[i, :l], A[i, l-1]*numpy.ones(l2-l)])
+        m_real = A[i, :l2]
         model = LVMM()
-        y = model._eval(
-            M=m,
+        y_same = model._eval(
+            M=m_same,
             DC=ft[:l2],
             L=l2,
             A=theta[i, 0],
@@ -119,13 +120,26 @@ if __name__ == "__main__":
             mu=theta[i, 3],
             sig=theta[i, 4],
         )
-        y_pred = y[:l]
-        y_forecast = y[l:]
+
+        y_real = model._eval(
+            M=m_real,
+            DC=ft[:l2],
+            L=l2,
+            A=theta[i, 0],
+            alpha=theta[i, 1],
+            beta=theta[i, 2],
+            mu=theta[i, 3],
+            sig=theta[i, 4],
+        )
+        y_pred = y_same[:l]
+        y_forecast = y_same[l:]
+        y_forecast_real = y_real[l:]
+
         if i % 9 == 0:
             _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
 
-        axs = plot_pred_forecast(pdf, i, l, x, y_true,
-                                 y_pred, y_forecast, State[i], axs)
+        axs = plot_pred_forecast(
+            pdf, i, l, x, y_true, y_pred, y_forecast, y_forecast_real, State[i], axs)
 
         if (i+1) % 9 == 0:
             pyplot.tight_layout()
