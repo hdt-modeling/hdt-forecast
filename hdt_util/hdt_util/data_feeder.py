@@ -8,6 +8,8 @@ import numpy as np
 import datetime
 from datetime import date
 
+BASE_DATE = date(2020, 3, 1)
+
 class Basic_feeder:
     
     def __init__(self, cache_loc=None):
@@ -143,12 +145,14 @@ class Valerie_and_Larry_feeder(Basic_feeder):
         
         if case_data is not None:
             case_data = case_data[['geo_value', 'time_value', 'value']]
-            case_data.rename({'value':'case_value'}, axis=1, inplace=True)
+            case_data.rename({'value':'case_value', 'time_value':'date'}, axis=1, inplace=True)
             case_data.reset_index(inplace=True, drop=True)
+            case_data['time'] = case_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
         if mobility_data is not None:
             mobility_data = mobility_data[['geo_value', 'time_value', 'value']]
-            mobility_data.rename({'value':'mobility_value'}, axis=1, inplace=True)
+            mobility_data.rename({'value':'mobility_value', 'time_value':'date'}, axis=1, inplace=True)
             mobility_data.reset_index(inplace=True, drop=True)
+            
         
         if not self.merge:
             return case_data, mobility_data
@@ -157,6 +161,6 @@ class Valerie_and_Larry_feeder(Basic_feeder):
                 full_data = None
                 return full_data
             if case_data is not None:
-                full_data = case_data.merge(mobility_data, on=['geo_value', 'time_value'], how='inner')
+                full_data = case_data.merge(mobility_data, on=['geo_value', 'date'], how='inner')
                 return full_data
         

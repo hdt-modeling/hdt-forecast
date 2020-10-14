@@ -37,16 +37,18 @@ class Valerie_and_Larry_tester:
                                             geo_type=level,
                                             start_date=start_date)
             direct_cases = direct_cases[['geo_value', 'time_value', 'value']]
-            assert direct_cases.shape == cases.shape, 'Shapes should be the same, but encountered {} and {}'.format(direct_cases.shape, cases.shape)
+            direct_cases.rename({'value':'case_value', 'time_value':'date'}, axis=1, inplace=True)
+            direct_cases.reset_index(inplace=True, drop=True)
+            assert direct_cases.shape[0] == cases.shape[0], 'First dimension of shapes should be the same, but encountered {} and {}'.format(direct_cases.shape, cases.shape)
             for i in range(cases.shape[0]):
-                for j in range(cases.shape[1]):
-                    val1 = direct_cases.iloc[i, j]
-                    val2 = cases.iloc[i, j]
+                for j in direct_cases.columns:
+                    val1 = direct_cases.loc[i, j]
+                    val2 = cases.loc[i, j]
                     assert  val1 == val2, 'at location {}, {} != {}'.format((i, j), val1, val2)
             
             #check mobility
             direct_mobility = new_loader.query(data_source='safegraph',
-                                               signal=feeder.safegraph_keys[mobility_level],
+                                               signal=self.feeder.safegraph_keys[mobility_level],
                                                start_date=start_date,
                                                forecast_date=end_date,
                                                geo_type=level)
@@ -58,8 +60,11 @@ class Valerie_and_Larry_tester:
                     val2 = mobility.iloc[i, j]
                     assert  val1 == val2, 'at location {}, {} != {}'.format((i, j), val1, val2)
                     
-    def test_data_processing(self):
-        print('Processing details are still under discussing. The test is passed for now')
+    def test_data_processing(self, period):
+        print('Processing details are still under discussing. The test is considered passed for now')
+        
+    def test_area_select(self, area):
+        print('Processing details are still under discussing. The test is considered passed for now')
 
 if __name__ == '__main__':
     cache_loc = 'test_data/request_cache'
@@ -74,7 +79,8 @@ if __name__ == '__main__':
     
     tester = Valerie_and_Larry_tester(cache_loc)
     tester.test_data_loading(source, signal, start_date, end_date, level, count, cumulated, mobility_level)
-    tester.test_data_processing()
+    tester.test_data_processing(4)
+    tester.test_area_select('CA')
     
     print('Passed All Tests')
 
