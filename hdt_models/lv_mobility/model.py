@@ -37,10 +37,10 @@ class LVMM:
         """
         optimizer(self, M, DC, y_true, loss, args)
 
-        self.args['M'] = M
-        self.args['DC'] = DC
+        self.args["M"] = M
+        self.args["DC"] = DC
         self.preds = self._eval(M, DC, len(
-            M), self.args['A'], self.args['alpha'], self.args['beta'], self.args['mu'], self.args['sig'])
+            M), self.args["A"], self.args["alpha"], self.args["beta"], self.args["mu"], self.args["sig"])
 
     def _eval(self, M, DC, L, A, alpha, beta, mu, sig):
         """
@@ -80,25 +80,48 @@ class LVMM:
         return abs(A)*out
 
     def eval(self, l1, l2):
+        """
+        Method for evaluating the predictions over the intervals it was trained on
+
+        Args:
+            l1 (int): zero-indexing, lower bound for interval you want to get predictions from
+            l2 (int): zero-indexing, upper bound for interval you want to get predictions from
+        """
         assert l1 < l2, "l1 should be less than l2"
-        assert l2 <= len(self.args['predictions']
-                        ) or l1 >= 0, "index is out of bounds"
+        assert l2 <= len(self.args["predictions"]
+                         ) or l1 >= 0, "index is out of bounds"
 
-        return self.args['predictions'][l1:l2]
+        return self.args["predictions"][l1:l2]
 
-    def forecast(self, l, M=[], DC=[], impute_method='same', impute_function=None):
-        assert not (impute_method != "custom" and impute_function != None), "method incompatible with function"
+    def forecast(self, l, M=[], DC=[], impute_method="same", impute_function=None):
+        """
+        Method for forecasting future values.
 
-        if not M:
+        Args:
+            l (int): length of time interval you want to forecast values up to
+            M (numpy array, list): mobility time series
+            DC (numpy array, list): death curve
+            impute_method (string): same, custom, ... 
+            impute_function (function): impute function for custom call
+
+        """
+        assert not (impute_method != "custom" and impute_function !=
+                    None), "method incompatible with function"
+
+        if not any(M):
             M = self.args["M"]
 
-        if impute_method == 'same':
+        #assumes mobility remains the same for future timesteps for the mobility time series
+        #returns M with the values padded with the last value from M above for indexes up to l-1
+        if impute_method == "same":
             L = len(M)
             M = numpy.concatenate([M, M[-1]*numpy.ones(l-L)])
 
-        if not DC:
+        #TODO(Stephen, Shitong): Add other impute methods
+
+        if not any(DC) or len(DC)<l:
             t = numpy.linspace(start=0, stop=l, num=l+1)
             DC = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
             DC = (DC/sum(DC)) * 0.03
 
-        return self._eval(M, DC[:l], l, self.args['A'], self.args['alpha'], self.args['beta'], self.args['mu'], self.args['sig'])
+        return self._eval(M, DC[:l], l, self.args["A"], self.args["alpha"], self.args["beta"], self.args["mu"], self.args["sig"])
