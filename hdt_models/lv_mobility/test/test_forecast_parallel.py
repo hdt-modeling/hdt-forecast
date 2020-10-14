@@ -54,6 +54,8 @@ if __name__ == "__main__":
     deaths = df["ndeaths"]
     home = df["completely_home_prop"]
     work = df["full_time_work_prop"]
+    part = df["part_time_work_prop"]
+    median = df["median_home_dwell_time"]
     cases = df["ncases"]
     state = df["state"]
     State = pandas.unique(state)
@@ -66,11 +68,17 @@ if __name__ == "__main__":
             I = (state == State[i])
             Y = we(deaths[I])
             A = we(home[I])  # using HOME
+            #A = we(work[I])
+            #A = we(part[I])
+            #A = we(median[I])
             C = we(cases[I])
         else:
             I = (state == State[i])
             Y = numpy.concatenate([Y, we(deaths[I])])
             A = numpy.concatenate([A, we(home[I])])  # using HOME
+            #A = numpy.concatenate([A, we(work[I])])
+            #A = numpy.concatenate([A, we(part[I])])
+            #A = numpy.concatenate([A, we(median[I])])
             C = numpy.concatenate([C, we(cases[I])])
     #######################################################
 
