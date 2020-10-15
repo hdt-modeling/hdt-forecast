@@ -185,19 +185,18 @@ class Valerie_and_Larry_feeder(Basic_feeder):
         assert 'geo_value' in input.columns, 'there should be a column named \'geo_value\' in input'
         assert isinstance(period, int) and period>0, '`period` should be a positive integer'
         assert isinstance(end_date, datetime.date), '`end_date` should be a datetime.date object'
-        assert end_date > BASE_DATE, '`end_date` should be after Mar 1st, 2020'
+        assert end_date > BASE_DATE, '`end_date` should be no earlier than Mar 1st, 2020'
         
         #filter data frame
         columns = [name for name in ['case_value', 'mobility_value'] if name in input.columns]
         new_columns = ['geo_value', 'time'] + columns
         input = input[new_columns]
-        input = input.reset_index(inplace=False, drop=True)
         max_time = (end_date - BASE_DATE).days
         min_time = min(input['time'])
         N = (max_time - min_time + 1) // period
         min_time = max_time - N * period + 1
         input = input[input['time'].apply(lambda x : min_time <= x <= max_time)]
-        print(max_time, min_time, N)
+        input = input.reset_index(inplace=False, drop=True)
         
         #collect existing date
         recorder = {}
