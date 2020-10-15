@@ -70,6 +70,102 @@ class Basic_feeder:
         
         return case_data
 
+    @staticmethod
+    def average_pooling(input, period, end_date):
+        '''
+        average pooling of case data and mobility data in `input` for every `period` days. 
+        If the sample size is not a multiple of `period`, the first few days will be dropped
+        
+        Params:
+        =======
+        period : int, the length of each period for an average pooling
+        input : pandas.DataFrame object
+        '''
+        
+        assert isinstance(input, pd.DataFrame), '`input` must be a pandas.DataFrame object'
+        assert 'geo_value' in input.columns, 'there should be a column named \'geo_value\' in input'
+        assert isinstance(period, int) and period>0, '`period` should be a positive integer'
+        assert isinstance(end_date, datetime.date), '`end_date` should be a datetime.date object'
+        assert end_date > BASE_DATE, '`end_date` should be no earlier than Mar 1st, 2020'
+        
+        #filter data frame
+        columns = [name for name in ['case_value', 'mobility_value'] if name in input.columns]
+        new_columns = ['geo_value', 'time'] + columns
+        input = input[new_columns]
+        max_time = (end_date - BASE_DATE).days
+        min_time = min(input['time'])
+        N = (max_time - min_time + 1) // period
+        min_time = max_time - N * period + 1
+        input = input[input['time'].apply(lambda x : min_time <= x <= max_time)]
+        input = input.reset_index(inplace=False, drop=True)
+        
+        #collect existing date
+        recorder = {}
+        for i in range(input.shape[0]):
+            geo = input.loc[i, 'geo_value']
+            time = input.loc[i, 'time']
+            record = recorder.get(geo, None)
+            if record is None or record['time'] < time:
+                # new latest record, update existing record
+                recorder[geo] = {'time':time}
+                for name in columns:
+                    recorder[geo][name] = input.loc[i, name] if name=='mobility_value' else np.nan
+        
+        #create impute data
+        imputed_data = {'time':[], 'geo_value':[]}
+        for name in columns:
+            imputed_data[name] = []
+        for geo in recorder.keys():
+            record = recorder[geo]
+            for time in range(record['time']+1, max_time+1):
+                imputed_data['time'].append(time)
+                imputed_data['geo_value'].append(geo)
+                for name in columns:
+                    imputed_data[name].append(record[name])
+        imputed_data = pd.DataFrame(imputed_data)
+        input = input.append(imputed_data, ignore_index=True)
+        
+        pooled = {}
+        for geo in recorder.keys():
+            pooled[geo] = {}
+            for num in range(N):
+                pooled[geo][num] = {}
+                for name in columns:
+                    pooled[geo][num][name] = []
+        
+        for i in range(input.shape[0]):
+            geo = input.loc[i, 'geo_value']
+            time = input.loc[i, 'time']
+            num = (time - min_time) // period
+            for name in columns:
+                pooled[geo][num][name].append(input.loc[i, name])
+                
+        result = dict(zip(new_columns, [[] for _ in new_columns]))
+        for geo in recorder.keys():
+            for num in range(N):
+                result['geo_value'].append(geo)
+                result['time'].append(num)
+                for name in columns:
+                    values = pooled[geo][num][name]
+                    result[name].append(np.nanmean(values))
+        result = pd.DataFrame(result)
+            
+        return result
+        
+    @staticmethod
+    def area_filter(input, area):
+        '''
+        Select rows with specified areas
+        
+        Params:
+        =======
+        area : List<str>, the list of areas interested in
+        '''
+        assert isinstance(area, list), '`area` should be a list of area codes'
+        area = [val.lower() for val in area]
+        
+        return input[input['geo_value'].apply(lambda x: x in area)].reset_index(inplace=False, drop=True)
+    
 class Valerie_and_Larry_feeder(Basic_feeder):
     '''
     Link to explanation document : https://drive.google.com/drive/u/0/folders/13i2PVMlADp_vw8VqxlhzApSGzsjILbWC
@@ -169,89 +265,7 @@ class Valerie_and_Larry_feeder(Basic_feeder):
                 full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='inner')
                 return full_data
     
-    @staticmethod
-    def average_pooling(input, period, end_date):
-        '''
-        average pooling of case data and mobility data in `input` for every `period` days. 
-        If the sample size is not a multiple of `period`, the first few days will be dropped
-        
-        Params:
-        =======
-        period : int, the length of each period for an average pooling
-        input : pandas.DataFrame object
-        '''
-        
-        assert isinstance(input, pd.DataFrame), '`input` must be a pandas.DataFrame object'
-        assert 'geo_value' in input.columns, 'there should be a column named \'geo_value\' in input'
-        assert isinstance(period, int) and period>0, '`period` should be a positive integer'
-        assert isinstance(end_date, datetime.date), '`end_date` should be a datetime.date object'
-        assert end_date > BASE_DATE, '`end_date` should be no earlier than Mar 1st, 2020'
-        
-        #filter data frame
-        columns = [name for name in ['case_value', 'mobility_value'] if name in input.columns]
-        new_columns = ['geo_value', 'time'] + columns
-        input = input[new_columns]
-        max_time = (end_date - BASE_DATE).days
-        min_time = min(input['time'])
-        N = (max_time - min_time + 1) // period
-        min_time = max_time - N * period + 1
-        input = input[input['time'].apply(lambda x : min_time <= x <= max_time)]
-        input = input.reset_index(inplace=False, drop=True)
-        
-        #collect existing date
-        recorder = {}
-        for i in range(input.shape[0]):
-            geo = input.loc[i, 'geo_value']
-            time = input.loc[i, 'time']
-            record = recorder.get(geo, None)
-            if record is None or record['time'] < time:
-                # new latest record, update existing record
-                recorder[geo] = {'time':time}
-                for name in columns:
-                    recorder[geo][name] = input.loc[i, name] if name=='mobility_value' else np.nan
-        
-        #create impute data
-        imputed_data = {'time':[], 'geo_value':[]}
-        for name in columns:
-            imputed_data[name] = []
-        for geo in recorder.keys():
-            record = recorder[geo]
-            for time in range(record['time']+1, max_time+1):
-                imputed_data['time'].append(time)
-                imputed_data['geo_value'].append(geo)
-                for name in columns:
-                    imputed_data[name].append(record[name])
-        imputed_data = pd.DataFrame(imputed_data)
-        input = input.append(imputed_data, ignore_index=True)
-        
-        pooled = {}
-        for geo in recorder.keys():
-            pooled[geo] = {}
-            for num in range(N):
-                pooled[geo][num] = {}
-                for name in columns:
-                    pooled[geo][num][name] = []
-        
-        for i in range(input.shape[0]):
-            geo = input.loc[i, 'geo_value']
-            time = input.loc[i, 'time']
-            num = (time - min_time) // period
-            for name in columns:
-                pooled[geo][num][name].append(input.loc[i, name])
-                
-        result = dict(zip(new_columns, [[] for _ in new_columns]))
-        for geo in recorder.keys():
-            for num in range(N):
-                result['geo_value'].append(geo)
-                result['time'].append(num)
-                for name in columns:
-                    values = pooled[geo][num][name]
-                    result[name].append(np.nanmean(values))
-        result = pd.DataFrame(result)
-            
-        return result
-        
-                    
+    
         
         
         
