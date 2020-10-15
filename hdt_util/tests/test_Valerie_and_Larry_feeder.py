@@ -103,8 +103,24 @@ class Valerie_and_Larry_tester:
                     value2 = mobility[(mobility['geo_value']==geo)&(mobility['date']==mobility['date'].max())]['mobility_value'].values[0]
                     assert abs(value1 - value2) < 1e-4, '{}, {}, {}'.format(value1, value2, abs(value1-value2))
         
-    def test_area_select(self, area):
-        print('Processing details are still under discussing. The test is considered passed for now')
+    def test_area_select(self, source, signal, start_date, end_date, level, count, cumulated, mobility_level, areas):
+        cases, mobility = self.feeder.get_data(source=source, 
+                                               signal=signal, 
+                                               start_date=start_date,
+                                               end_date=end_date, 
+                                               level=level, 
+                                               count=count, 
+                                               cumulated=cumulated,
+                                               mobility_level=mobility_level)
+        
+        areas = [val.lower() for val in areas]
+        filtered_cases = self.feeder.area_filter(cases, areas)
+        filtered_mobility = self.feeder.area_filter(mobility, areas)
+        
+        for i in range(filtered_cases.shape[0]):
+            assert filtered_cases.loc[i, 'geo_value'].lower() in areas, '{} not in {}'.format(filtered_cases.loc[i, 'geo_value'].lower(), areas)
+        for i in range(filtered_mobility.shape[0]):
+            assert filtered_mobility.loc[i, 'geo_value'].lower() in areas, '{} not in {}'.format(filtered_mobility.loc[i, 'geo_value'].lower(), areas)
 
 if __name__ == '__main__':
     cache_loc = 'test_data/request_cache'
@@ -117,6 +133,7 @@ if __name__ == '__main__':
     cumulated=False
     mobility_level=1
     period_choices = [3, 4, 7]
+    areas = ['CA', 'WA', 'AK']
     
     tester = Valerie_and_Larry_tester(cache_loc)
     print('Testing data loading')
@@ -127,7 +144,7 @@ if __name__ == '__main__':
         tester.test_avg_pooling(source, signal, start_date, end_date, level, count, cumulated, mobility_level, period)
         print('Period {} finished'.format(period))
     print('Testing selection of area')
-    tester.test_area_select('CA')
+    tester.test_area_select(source, signal, start_date, end_date, level, count, cumulated, mobility_level, areas)
     print('Area selection finished')
     print('Passed All Tests')
 
