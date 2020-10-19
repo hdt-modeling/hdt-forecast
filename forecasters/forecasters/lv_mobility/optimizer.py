@@ -20,7 +20,7 @@ def optim(model, M, DC, y_true, loss, args=None):
         MU = np.linspace(0.1, 0.5, num=5)
         bounds = np.array([
             [-100, 100],
-            [0.5, 4],
+            [-4, 4],
             [-40, 40],
             [-2, 2],
             [0.00001, 2],
