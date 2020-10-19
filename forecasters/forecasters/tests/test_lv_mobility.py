@@ -1,6 +1,6 @@
 import pytest
-import numpy
-from lv_mobility import LVMM
+import numpy as np
+from forecasters.lv_mobility import LVMM
 
 
 def test_LVMM_eval(l=-1, args={}):
@@ -59,11 +59,11 @@ def test_LVMM_forecast(l=-1, args={}):
 
     assert forecast.shape[0] == 25
 
-    forecast = model.forecast(l2, M=numpy.array(args['M']))
+    forecast = model.forecast(l2, M=np.array(args['M']))
 
     assert forecast.shape[0] == 25
 
-    forecast = model.forecast(l2, M=numpy.array(args['M']), DC=numpy.array(args['DC']))
+    forecast = model.forecast(l2, M=np.array(args['M']), DC=np.array(args['DC']))
 
     assert forecast.shape[0] == 25
 

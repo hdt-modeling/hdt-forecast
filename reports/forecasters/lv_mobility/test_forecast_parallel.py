@@ -1,20 +1,41 @@
-# an implementation of Larry and Valerie's mobility model
+# a parallelized implementation of Larry and Valerie's mobility model
 from scipy.stats import gamma, norm
 import numpy
 import pandas
 import math
 import os
+import multiprocessing as mp
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as pyplot
-from lv_mobility import LVMM
-from plots import plot_fit
+from forecasters.lv_mobility import LVMM
+from plots import plot_pred_forecast
+
+
+def worker(i, M, DC, y_true):
+    model = LVMM()
+    model.fit(
+        M=M,
+        DC=DC,
+        y_true=y_true,
+    )
+    return i, model.args
+
+
+def error_callback(exception):
+    print(exception)
+
+
+def callback(args):
+    keys = ['A', 'alpha', 'beta', 'mu', 'sig']
+    for j, key in enumerate(keys):
+        theta[args[0], j] = args[1][key]
 
 
 if __name__ == "__main__":
     # TODO: Should be replaced with Lifeng's data pipeline
     # Some of the features we may want in the pipeline:
     # The ability to choose the start and end dates
-    # The option to break up the data by a set number, e.g. every 7 days and then applying a transformation to that data
+    # The option to break up the data by a set number, e.g. every 7 days
     # The ability to transform data in these grouped intervals with user defined transformations
     def we(a):
         n = len(a)
@@ -33,6 +54,8 @@ if __name__ == "__main__":
     deaths = df["ndeaths"]
     home = df["completely_home_prop"]
     work = df["full_time_work_prop"]
+    part = df["part_time_work_prop"]
+    median = df["median_home_dwell_time"]
     cases = df["ncases"]
     state = df["state"]
     State = pandas.unique(state)
@@ -40,51 +63,91 @@ if __name__ == "__main__":
 
     Y = A = C = None
     n = len(deaths)
-    for i in range(0, 51):
+    for i in range(51):
         if i == 0:
             I = (state == State[i])
             Y = we(deaths[I])
             A = we(home[I])  # using HOME
+            #A = we(work[I])
+            #A = we(part[I])
+            #A = we(median[I])
             C = we(cases[I])
         else:
             I = (state == State[i])
             Y = numpy.concatenate([Y, we(deaths[I])])
             A = numpy.concatenate([A, we(home[I])])  # using HOME
+            #A = numpy.concatenate([A, we(work[I])])
+            #A = numpy.concatenate([A, we(part[I])])
+            #A = numpy.concatenate([A, we(median[I])])
             C = numpy.concatenate([C, we(cases[I])])
     #######################################################
 
-    l = 25
+    l = 18
     t = numpy.linspace(start=0, stop=l, num=l+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
     x = range(1, l+1)
 
-    pdf = PdfPages("plots/fit_optim.pdf")
+    pdf = PdfPages("plots/fit_optim_forecast.pdf")
     _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
     theta = numpy.zeros((51, 5))
-    keys = ['A', 'alpha', 'beta', 'mu', 'sig']
+    pool = mp.Pool(mp.cpu_count())
 
     # training loop
     for i in range(51):
-        model = LVMM()
         y_true = Y[i, :l]
         m = A[i, :l]
-
-        model.fit(
-            M=m,
-            DC=ft[:25],
-            y_true=y_true,
+        pool.apply_async(
+            worker,
+            [i, m, ft[:l], y_true],
+            callback=callback,
+            error_callback=error_callback,
         )
-        for j, key in enumerate(keys):
-            theta[i, j] = model.args[key]
+    pool.close()
+    pool.join()
 
-        y_pred = model.preds
+    # plotting predictions and observations for State[i]
+    l2 = 25
+    t = numpy.linspace(start=0, stop=l2, num=l2+1)
+    ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
+    ft = (ft/sum(ft)) * 0.03
+    x = range(1, l2+1)
 
-        # plotting predictions and observations for State[i]
+    for i in range(51):
+        y_true = Y[i, :l2]
+        m_same = numpy.concatenate([A[i, :l], A[i, l-1]*numpy.ones(l2-l)])
+        m_real = A[i, :l2]
+        model = LVMM()
+        y_same = model._eval(
+            M=m_same,
+            DC=ft[:l2],
+            L=l2,
+            A=theta[i, 0],
+            alpha=theta[i, 1],
+            beta=theta[i, 2],
+            mu=theta[i, 3],
+            sig=theta[i, 4],
+        )
+
+        y_real = model._eval(
+            M=m_real,
+            DC=ft[:l2],
+            L=l2,
+            A=theta[i, 0],
+            alpha=theta[i, 1],
+            beta=theta[i, 2],
+            mu=theta[i, 3],
+            sig=theta[i, 4],
+        )
+        y_pred = y_same[:l]
+        y_forecast = y_same[l:]
+        y_forecast_real = y_real[l:]
+
         if i % 9 == 0:
             _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
 
-        axs = plot_fit(pdf, i, x, y_true, y_pred, State[i], axs)
+        axs = plot_pred_forecast(
+            pdf, i, l, x, y_true, y_pred, y_forecast, y_forecast_real, State[i], axs)
 
         if (i+1) % 9 == 0:
             pyplot.tight_layout()
@@ -109,8 +172,9 @@ if __name__ == "__main__":
     x = numpy.linspace(0.1, 0.9, num=200)
     pyplot.figure(figsize=(8, 8))
     for i in range(51):
-        pyplot.plot(x, theta[i, 2]+theta[i, 1]*norm.cdf(x,
-                                                        loc=abs(theta[i, 3]), scale=abs(theta[i, 4])))
+        y = numpy.exp(theta[i, 2]+theta[i, 1]*norm.cdf(x,
+                                                       loc=abs(theta[i, 3]), scale=abs(theta[i, 4])))
+        pyplot.plot(x, y)
     pyplot.xlabel("Mobility proportion", fontsize=10)
     pyplot.ylabel("Reproduction Number", fontsize=10)
     pyplot.tight_layout()

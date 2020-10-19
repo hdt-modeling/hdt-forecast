@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="hdt_models", # Replace with your own username
+    name="forecasters", # Replace with your own username
     version="0.0.1",
     author="James Sharpnack, Stephen Sheng, Shitong Wei",
     author_email="stevexsheng@gmail.com",

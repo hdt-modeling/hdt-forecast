@@ -1,13 +1,13 @@
 # a parallelized implementation of Larry and Valerie's mobility model
 from scipy.stats import gamma, norm
-import numpy
+import numpy as np
 import pandas
 import math
 import os
 import multiprocessing as mp
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as pyplot
-from lv_mobility import LVMM
+from forecasters.lv_mobility import LVMM
 from plots import plot_mobility
 
 if __name__ == "__main__":
@@ -22,7 +22,7 @@ if __name__ == "__main__":
         nn = b*7
         a = a[0:nn]
         a = a.values.reshape((b, 7))
-        a = numpy.sum(a, axis=1)
+        a = np.sum(a, axis=1)
         a = a.reshape((1, b))
         return a
 
@@ -53,12 +53,12 @@ if __name__ == "__main__":
             C = we(cases[I])
         else:
             I = (state == State[i])
-            Y = numpy.concatenate([Y, we(deaths[I])])
-            #A = numpy.concatenate([A, we(home[I])])  # using HOME
-            #A = numpy.concatenate([A, we(work[I])])
-            #A = numpy.concatenate([A, we(part[I])])
-            A = numpy.concatenate([A, we(median[I])])
-            C = numpy.concatenate([C, we(cases[I])])
+            Y = np.concatenate([Y, we(deaths[I])])
+            #A = np.concatenate([A, we(home[I])])  # using HOME
+            #A = np.concatenate([A, we(work[I])])
+            #A = np.concatenate([A, we(part[I])])
+            A = np.concatenate([A, we(median[I])])
+            C = np.concatenate([C, we(cases[I])])
     #######################################################
     l=25
     pdf = PdfPages("plots/median_home_dwell_time.pdf")

@@ -1,8 +1,8 @@
-import numpy
+import numpy as np 
 import scipy
 from scipy.stats import gamma, norm
-from lv_mobility.optimizer import optim
-from lv_mobility.loss import hellinger
+from forecasters.lv_mobility.optimizer import optim
+from forecasters.lv_mobility.loss import hellinger
 
 
 class LVMM:
@@ -60,38 +60,24 @@ class LVMM:
             A numpy array containing the predictions of the model between timesteps
             1 and L, inclusive
         """
-        Beta = beta + alpha * \
+        Beta = beta + alpha *\
             norm.cdf(M[0:L], loc=abs(mu), scale=abs(sig))
-        BetaSum = numpy.cumsum(numpy.insert(Beta, 0, 0))
-        BetaSum = numpy.delete(BetaSum, L)
+        BetaSum = np.cumsum(np.insert(Beta, 0, 0))
+        BetaSum = np.delete(BetaSum, L)
 
         # TODO(Stephen, Shitong): The initialization for the out variable needs to be tuned.
         # It fits poorly at beginning if A is large if all terms are nonzero
         # But it fits better at later timesteps with nonzero initialization
         # These simple initializations work decently but aren't optimal
-        #out = (1/L) * numpy.ones(L)
-        out = numpy.zeros(L)
+        #out = (1/L) * np.ones(L)
+        out = np.zeros(L)
         DC0 = DC
         for d in range(L):
-            DC0 = numpy.insert(DC0, 0, 0)
-            DC0 = numpy.delete(DC0, L)
-            out = out + DC0*numpy.exp(BetaSum[d])
+            DC0 = np.insert(DC0, 0, 0)
+            DC0 = np.delete(DC0, L)
+            out = out + DC0*np.exp(BetaSum[d])
 
         return abs(A)*out
-
-    def eval(self, l1, l2):
-        """
-        Method for evaluating the predictions over the intervals it was trained on
-
-        Args:
-            l1 (int): zero-indexing, lower bound for interval you want to get predictions from
-            l2 (int): zero-indexing, upper bound for interval you want to get predictions from
-        """
-        assert l1 < l2, "l1 should be less than l2"
-        assert l2 <= len(self.args["predictions"]
-                         ) or l1 >= 0, "index is out of bounds"
-
-        return self.args["predictions"][l1:l2]
 
     def forecast(self, l, M=[], DC=[], impute_method="same", impute_function=None):
         """
@@ -111,17 +97,17 @@ class LVMM:
         if not any(M):
             M = self.args["M"]
 
-        #assumes mobility remains the same for future timesteps for the mobility time series
-        #returns M with the values padded with the last value from M above for indexes up to l-1
+        # assumes mobility remains the same for future timesteps for the mobility time series
+        # returns M with the values padded with the last value from M above for indexes up to l-1
         if impute_method == "same":
             L = len(M)
-            M = numpy.concatenate([M, M[-1]*numpy.ones(l-L)])
+            M = np.concatenate([M, M[-1]*np.ones(l-L)])
 
-        #TODO(Stephen, Shitong): Add other impute methods
+        # TODO(Stephen, Shitong): Add other impute methods
 
-        if not any(DC) or len(DC)<l:
-            t = numpy.linspace(start=0, stop=l, num=l+1)
-            DC = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
+        if not any(DC) or len(DC) < l:
+            t = np.linspace(start=0, stop=l, num=l+1) #TODO: Vary t in a nonlinear way
+            DC = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter #TODO: Adaptively change scale and a as new data is ingested
             DC = (DC/sum(DC)) * 0.03
 
         return self._eval(M, DC[:l], l, self.args["A"], self.args["alpha"], self.args["beta"], self.args["mu"], self.args["sig"])

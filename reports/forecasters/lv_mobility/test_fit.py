@@ -1,41 +1,20 @@
-# a parallelized implementation of Larry and Valerie's mobility model
+# an implementation of Larry and Valerie's mobility model
 from scipy.stats import gamma, norm
 import numpy
 import pandas
 import math
 import os
-import multiprocessing as mp
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as pyplot
-from lv_mobility import LVMM
+from forecasters.lv_mobility import LVMM
 from plots import plot_fit
-
-
-def worker(i, M, DC, y_true):
-    model = LVMM()
-    model.fit(
-        M=M,
-        DC=DC,
-        y_true=y_true,
-    )
-    return i, model.args
-
-
-def error_callback(exception):
-    print(exception)
-
-
-def callback(args):
-    keys = ['A', 'alpha', 'beta', 'mu', 'sig']
-    for j, key in enumerate(keys):
-        theta[args[0], j] = args[1][key]
 
 
 if __name__ == "__main__":
     # TODO: Should be replaced with Lifeng's data pipeline
     # Some of the features we may want in the pipeline:
     # The ability to choose the start and end dates
-    # The option to break up the data by a set number, e.g. every 7 days
+    # The option to break up the data by a set number, e.g. every 7 days and then applying a transformation to that data
     # The ability to transform data in these grouped intervals with user defined transformations
     def we(a):
         n = len(a)
@@ -61,7 +40,7 @@ if __name__ == "__main__":
 
     Y = A = C = None
     n = len(deaths)
-    for i in range(51):
+    for i in range(0, 51):
         if i == 0:
             I = (state == State[i])
             Y = we(deaths[I])
@@ -83,36 +62,25 @@ if __name__ == "__main__":
     pdf = PdfPages("plots/fit_optim.pdf")
     _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
     theta = numpy.zeros((51, 5))
-    pool = mp.Pool(mp.cpu_count())
+    keys = ['A', 'alpha', 'beta', 'mu', 'sig']
 
     # training loop
     for i in range(51):
-        y_true = Y[i, :l]
-        m = A[i, :l]
-        pool.apply_async(
-            worker,
-            [i, m, ft[:l], y_true],
-            callback=callback,
-            error_callback=error_callback,
-        )
-    pool.close()
-    pool.join()
-
-    # plotting predictions and observations for State[i]
-    for i in range(51):
-        y_true = Y[i, :l]
-        m = A[i, :l]
         model = LVMM()
-        y_pred = model._eval(
+        y_true = Y[i, :l]
+        m = A[i, :l]
+
+        model.fit(
             M=m,
-            DC=ft[:l],
-            L=l,
-            A=theta[i, 0],
-            alpha=theta[i, 1],
-            beta=theta[i, 2],
-            mu=theta[i, 3],
-            sig=theta[i, 4],
+            DC=ft[:25],
+            y_true=y_true,
         )
+        for j, key in enumerate(keys):
+            theta[i, j] = model.args[key]
+
+        y_pred = model.preds
+
+        # plotting predictions and observations for State[i]
         if i % 9 == 0:
             _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
 
@@ -141,9 +109,8 @@ if __name__ == "__main__":
     x = numpy.linspace(0.1, 0.9, num=200)
     pyplot.figure(figsize=(8, 8))
     for i in range(51):
-        y = numpy.exp(theta[i, 2]+theta[i, 1]*norm.cdf(x,
-                                                       loc=abs(theta[i, 3]), scale=abs(theta[i, 4])))
-        pyplot.plot(x, y)
+        pyplot.plot(x, theta[i, 2]+theta[i, 1]*norm.cdf(x,
+                                                        loc=abs(theta[i, 3]), scale=abs(theta[i, 4])))
     pyplot.xlabel("Mobility proportion", fontsize=10)
     pyplot.ylabel("Reproduction Number", fontsize=10)
     pyplot.tight_layout()

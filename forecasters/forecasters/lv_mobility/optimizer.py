@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from scipy.optimize import dual_annealing
 import itertools
 
@@ -15,13 +15,30 @@ def optim(model, M, DC, y_true, loss, args=None):
         args (dict): ALPHA, BETA, MU, array of parameters for initialization
     """
     if args == None:
-        ALPHA = numpy.linspace(-2, 2, num=6)
-        BETA = numpy.linspace(-2, 2, num=6)
-        MU = numpy.linspace(0.1, 0.5, num=5)
+        ALPHA = np.linspace(-2, 2, num=6)
+        BETA = np.linspace(-2, 2, num=6)
+        MU = np.linspace(0.1, 0.5, num=5)
+        bounds = np.array([
+            [-100, 100],
+            [0.5, 4],
+            [-40, 40],
+            [-2, 2],
+            [0.00001, 2],
+        ])
     else:
         ALPHA = args["ALPHA"]
         BETA = args["BETA"]
         MU = args["MU"]
+        if args.has_key("bounds"):
+            bounds = args["bounds"]
+        else:
+            bounds = np.array([
+                [-100, 100],
+                [-4, 4],
+                [-40, 40],
+                [-2, 2],
+                [0.00001, 2],
+            ])
 
     iterator = itertools.product(
         range(len(ALPHA)),
@@ -37,15 +54,8 @@ def optim(model, M, DC, y_true, loss, args=None):
     L = len(M)
 
     for i, j, k in iterator:
-        par_init = numpy.array(
-            [1.5+numpy.mean(y_true)/L, ALPHA[i], BETA[j], MU[k], 1])
-        bounds = numpy.array([
-            [-100, 100],
-            [-4, 4],
-            [-40, 40],
-            [-2, 2],
-            [0.00001, 2],
-        ])
+        par_init = np.array(
+            [1.5+np.mean(y_true)/L, ALPHA[i], BETA[j], MU[k], 1])
 
         args_ = [M, DC, L]
         res = dual_annealing(
