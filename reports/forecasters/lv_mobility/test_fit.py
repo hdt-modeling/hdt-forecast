@@ -1,6 +1,6 @@
 # an implementation of Larry and Valerie's mobility model
 from scipy.stats import gamma, norm
-import numpy
+import numpy as np
 import pandas
 import math
 import os
@@ -22,7 +22,7 @@ if __name__ == "__main__":
         nn = b*7
         a = a[0:nn]
         a = a.values.reshape((b, 7))
-        a = numpy.sum(a, axis=1)
+        a = np.sum(a, axis=1)
         a = a.reshape((1, b))
         return a
 
@@ -48,20 +48,20 @@ if __name__ == "__main__":
             C = we(cases[I])
         else:
             I = (state == State[i])
-            Y = numpy.concatenate([Y, we(deaths[I])])
-            A = numpy.concatenate([A, we(home[I])])  # using HOME
-            C = numpy.concatenate([C, we(cases[I])])
+            Y = np.concatenate([Y, we(deaths[I])])
+            A = np.concatenate([A, we(home[I])])  # using HOME
+            C = np.concatenate([C, we(cases[I])])
     #######################################################
 
     l = 25
-    t = numpy.linspace(start=0, stop=l, num=l+1)
+    t = np.linspace(start=0, stop=l, num=l+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
     x = range(1, l+1)
 
     pdf = PdfPages("plots/fit_optim.pdf")
     _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
-    theta = numpy.zeros((51, 5))
+    theta = np.zeros((51, 5))
     keys = ['A', 'alpha', 'beta', 'mu', 'sig']
 
     # training loop
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     pyplot.close()
 
     # plot reproduction numbers
-    x = numpy.linspace(0.1, 0.9, num=200)
+    x = np.linspace(0.1, 0.9, num=200)
     pyplot.figure(figsize=(8, 8))
     for i in range(51):
         pyplot.plot(x, theta[i, 2]+theta[i, 1]*norm.cdf(x,

@@ -1,6 +1,6 @@
 # a parallelized implementation of Larry and Valerie's mobility model
 from scipy.stats import gamma, norm
-import numpy
+import numpy as np
 import pandas
 import math
 import os
@@ -43,7 +43,7 @@ if __name__ == "__main__":
         nn = b*7
         a = a[0:nn]
         a = a.values.reshape((b, 7))
-        a = numpy.sum(a, axis=1)
+        a = np.sum(a, axis=1)
         a = a.reshape((1, b))
         return a
 
@@ -74,23 +74,23 @@ if __name__ == "__main__":
             C = we(cases[I])
         else:
             I = (state == State[i])
-            Y = numpy.concatenate([Y, we(deaths[I])])
-            A = numpy.concatenate([A, we(home[I])])  # using HOME
-            #A = numpy.concatenate([A, we(work[I])])
-            #A = numpy.concatenate([A, we(part[I])])
-            #A = numpy.concatenate([A, we(median[I])])
-            C = numpy.concatenate([C, we(cases[I])])
+            Y = np.concatenate([Y, we(deaths[I])])
+            A = np.concatenate([A, we(home[I])])  # using HOME
+            #A = np.concatenate([A, we(work[I])])
+            #A = np.concatenate([A, we(part[I])])
+            #A = np.concatenate([A, we(median[I])])
+            C = np.concatenate([C, we(cases[I])])
     #######################################################
 
     l = 18
-    t = numpy.linspace(start=0, stop=l, num=l+1)
+    t = np.linspace(start=0, stop=l, num=l+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
     x = range(1, l+1)
 
     pdf = PdfPages("plots/fit_optim_forecast.pdf")
     _, axs = pyplot.subplots(3, 3, figsize=(8, 8))
-    theta = numpy.zeros((51, 5))
+    theta = np.zeros((51, 5))
     pool = mp.Pool(mp.cpu_count())
 
     # training loop
@@ -108,14 +108,14 @@ if __name__ == "__main__":
 
     # plotting predictions and observations for State[i]
     l2 = 25
-    t = numpy.linspace(start=0, stop=l2, num=l2+1)
+    t = np.linspace(start=0, stop=l2, num=l2+1)
     ft = gamma.pdf(t*7, scale=3.64, a=6.28)  # a - shape parameter
     ft = (ft/sum(ft)) * 0.03
     x = range(1, l2+1)
 
     for i in range(51):
         y_true = Y[i, :l2]
-        m_same = numpy.concatenate([A[i, :l], A[i, l-1]*numpy.ones(l2-l)])
+        m_same = np.concatenate([A[i, :l], A[i, l-1]*np.ones(l2-l)])
         m_real = A[i, :l2]
         model = LVMM()
         y_same = model._eval(
@@ -169,10 +169,10 @@ if __name__ == "__main__":
     pyplot.close()
 
     # plot reproduction numbers
-    x = numpy.linspace(0.1, 0.9, num=200)
+    x = np.linspace(0.1, 0.9, num=200)
     pyplot.figure(figsize=(8, 8))
     for i in range(51):
-        y = numpy.exp(theta[i, 2]+theta[i, 1]*norm.cdf(x,
+        y = np.exp(theta[i, 2]+theta[i, 1]*norm.cdf(x,
                                                        loc=abs(theta[i, 3]), scale=abs(theta[i, 4])))
         pyplot.plot(x, y)
     pyplot.xlabel("Mobility proportion", fontsize=10)
