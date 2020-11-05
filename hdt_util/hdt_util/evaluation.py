@@ -3,6 +3,8 @@ import numpy as np
 from datetime import date, timedelta
 import tqdm
 
+from . import metrics
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -45,6 +47,6 @@ class evaluator:
         self.metrics = metrics
         
     def evaluate_model(self, model, model_args, data_source_args):
-        
+        raise NotImplemented
     
     
