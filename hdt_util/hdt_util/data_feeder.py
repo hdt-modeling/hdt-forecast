@@ -265,7 +265,6 @@ class Valerie_and_Larry_feeder(Basic_feeder):
                 full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='inner')
                 return full_data
     
-    
         
         
         
