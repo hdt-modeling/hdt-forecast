@@ -80,7 +80,7 @@ class Valerie_and_Larry_evaluator(evaluator):
     def evaluate_model(self, model_args, data_source_args=None):
         
         num_days = (self.end_date - self.start_date).days + 1 # how many days in total in training data
-        num_period = math.ceil(num_days / self.period) # how many periods in the training data
+        num_period = math.floor(num_days / self.period) # how many periods in the training data
         real_start_date = self.start_date + datetime.timedelta(days = num_days % self.period) # real start dates for the first period
         real_prediction_dates = [self.end_date + datetime.timedelta(days=self.period * i) for i in range(1, self.max_prediction_length+1)] # dates that we have to make a prediction
         real_as_of_dates = [date + datetime.timedelta(days=CURRENT_DELAY) for date in real_prediction_dates] # considering delay, what are the as_of_date we need to evaluation each prediction
