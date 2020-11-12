@@ -153,7 +153,7 @@ class LVMM:
         Method for forecasting future values.
 
         Args:
-            l (int): length of time interval to forecase
+            l (int): length of time interval to forecast
             M (numpy array, list): mobility time series
             DC (numpy array, list): death curve
             impute_method (string): same, custom, ... 
