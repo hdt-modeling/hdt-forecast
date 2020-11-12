@@ -79,11 +79,11 @@ class Valerie_and_Larry_evaluator(evaluator):
     
     def evaluate_model(self, model_args, data_source_args=None):
         
-        num_days = (self.end_date - self.start_date).days
-        num_period = math.ceil(num_days / self.period)
-        real_start_date = self.start_date + datetime.timedelta(days = num_days % self.period)
-        real_prediction_dates = [self.end_date + datetime.timedelta(days=self.period * i) for i in range(1, self.max_prediction_length+1)]
-        real_as_of_dates = [date + datetime.timedelta(days=CURRENT_DELAY) for date in real_prediction_dates]
+        num_days = (self.end_date - self.start_date).days + 1 # how many days in total in training data
+        num_period = math.ceil(num_days / self.period) # how many periods in the training data
+        real_start_date = self.start_date + datetime.timedelta(days = num_days % self.period) # real start dates for the first period
+        real_prediction_dates = [self.end_date + datetime.timedelta(days=self.period * i) for i in range(1, self.max_prediction_length+1)] # dates that we have to make a prediction
+        real_as_of_dates = [date + datetime.timedelta(days=CURRENT_DELAY) for date in real_prediction_dates] # considering delay, what are the as_of_date we need to evaluation each prediction
         today = datetime.date.today()
         if real_as_of_dates[0] > today:
             print('No enough data to evaluate the model! You have to wait until {} for evaluation data to be available'.format(real_as_of_dates[0]))
@@ -91,7 +91,7 @@ class Valerie_and_Larry_evaluator(evaluator):
         else:
             real_as_of_dates = [date for date in real_as_of_dates if date <=today]
         
-        real_prediction_dates = [self.end_date] + real_prediction_dates
+        real_prediction_dates = [self.end_date] + real_prediction_dates # although self.end_date is included here, there would be no prediction of it
         
         model = LVMM(**model_args)
         loader = data_feeder.Valerie_and_Larry_feeder(self.cache_loc)
@@ -140,13 +140,10 @@ class Valerie_and_Larry_evaluator(evaluator):
                       DC = DC,
                       y_true = avg_temp_train['case_value'].values)
             
-            pred = model.forecast(l = int(num_period - 1 - avg_temp_train['time'].values[-1]) + effective_prediction_length) #'time' starts with 0, that's why we use `num_period - 1` here
+            pred = model.forecast(l = int(num_period - 1 - avg_temp_train['time'].values[-1]) + effective_prediction_length) #'time' starts with 0, that's why we use `num_period - 1` here, as avg_temp_train.values[-1] is an index
             pred = pred[-effective_prediction_length:]
             
             for i, value in enumerate(pred):
-                geo_values.append(geo_value)
-                prediction_length.append(i+1)
-                predicted_value.append(value)
                 temp = loader.get_data(source=source, 
                                        signal=signal, 
                                        start_date=real_prediction_dates[i],
@@ -157,9 +154,13 @@ class Valerie_and_Larry_evaluator(evaluator):
                                        mobility_level=mobility_level)
                 if temp is None:
                     print('start_data {}, end_date {}, result is None'.format(real_prediction_dates[i], real_as_of_dates[i]))
-                temp = temp[temp['geo_value']==geo_value]
-                temp = loader.average_pooling(temp, self.period, real_prediction_dates[i+1])
-                real_value.append(temp['case_value'].values[0])
+                else:
+                    geo_values.append(geo_value)
+                    prediction_length.append(i+1)
+                    predicted_value.append(value)
+                    temp = temp[temp['geo_value']==geo_value]
+                    temp = loader.average_pooling(temp, self.period, real_prediction_dates[i+1])
+                    real_value.append(temp['case_value'].values[0])
                 
         return pd.DataFrame({'geo_value':geo_values,
                              'prediction_length':prediction_length,
