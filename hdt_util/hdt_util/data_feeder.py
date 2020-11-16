@@ -71,7 +71,7 @@ class Basic_feeder:
         return case_data
 
     @staticmethod
-    def average_pooling(input, period, end_date):
+    def pooling(input, period, end_date, method='mean'):
         '''
         average pooling of case data and mobility data in `input` for every `period` days. 
         If the sample size is not a multiple of `period`, the first few days will be dropped
@@ -80,6 +80,8 @@ class Basic_feeder:
         =======
         period : int, the length of each period for an average pooling
         input : pandas.DataFrame object
+        end_date : datetime.date object, the end of the last period, no matter what's the real input date range
+        method : string or a function, how the pooling for each period should be done. If a string, should be one of 'mean', 'max' and 'min'. Case insensitive. Default 'mean'. If a function, it has to return a scalar with a list of scalar (might include np.nan) as input
         '''
         
         assert isinstance(input, pd.DataFrame), '`input` must be a pandas.DataFrame object'
@@ -87,6 +89,10 @@ class Basic_feeder:
         assert isinstance(period, int) and period>0, '`period` should be a positive integer'
         assert isinstance(end_date, datetime.date), '`end_date` should be a datetime.date object'
         assert end_date > BASE_DATE, '`end_date` should be no earlier than Mar 1st, 2020'
+        if isinstance(method, str):
+            method = method.lower()
+        if method not in ['mean', 'max', 'min']:
+            method = 'mean'
         
         #filter data frame
         columns = [name for name in ['case_value', 'mobility_value'] if name in input.columns]
@@ -147,7 +153,14 @@ class Basic_feeder:
                 result['time'].append(num)
                 for name in columns:
                     values = pooled[geo][num][name]
-                    result[name].append(np.nanmean(values))
+                    if method=='mean':
+                        result[name].append(np.nanmean(values))
+                    elif method=='min':
+                        result[name].append(np.nanmin(values))
+                    elif method=='max':
+                        result[name].append(np.nanmax(values))
+                    else:
+                        result[name].append(method(values))
         result = pd.DataFrame(result)
             
         return result

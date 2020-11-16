@@ -32,7 +32,7 @@ class evaluator:
         self.cache_loc = cache_loc
         self.relations = {'MAE':self.MAE}
     
-    def update_parameters(self, start_date, end_date, max_prediction_length=1, period=7, min_train=10, metrics=[]):
+    def update_parameters(self, start_date, end_date, max_prediction_length=1, period=7, min_train=10, method='mean', metrics=[]):
         '''
         Update dates info for evaluation, also check if dates are valid
         
@@ -42,6 +42,7 @@ class evaluator:
         end_date : datetime.date object, the end time for training data
         max_prediction_length : int, positive, at most how many periods to predict
         min_train : int, positive, how many periods required for training
+        method : string or a function, how the pooling for each period should be done. If a string, should be one of 'mean', 'max' and 'min'. Case insensitive. Default 'mean'. If a function, it has to return a scalar with a list of scalar (might include np.nan) as input
         metrics : List<str>, a list of metrics to calculate
         '''
         
@@ -57,11 +58,17 @@ class evaluator:
         
         assert isinstance(metrics, list) and all(isinstance(name, str) for name in metrics), '`metrics` must be a list of names (as strings) of evaluation metrics'
         
+        if isinstance(method, str):
+            method = method.lower()
+        if method not in ['mean', 'max', 'min']:
+            method = 'mean'
+        
         self.start_date = start_date
         self.end_date = end_date
         self.max_prediction_length = max_prediction_length
         self.period = period
         self.min_train = min_train
+        self.method = method
         self.metrics = metrics
         
     def evaluate_model(self, *args, **kwargs):
@@ -128,8 +135,8 @@ class Valerie_and_Larry_evaluator(evaluator):
         for geo_value in tqdm.tqdm(geo_value_candidates):
             
             temp_train = train_data[train_data['geo_value'] == geo_value]
-            avg_temp_train = loader.average_pooling(temp_train, self.period, self.end_date)
-            avg_temp_train.dropna(how='any', inplace=True)
+            avg_temp_train = loader.pooling(input=temp_train, period=self.period, end_date=self.end_date, method=self.method)
+            avg_temp_train.dropna(how='any', inplace=True) # the last entry may have nan for case numbers
             effective_prediction_length = len(real_as_of_dates)
             
             DC = avg_temp_train['time'].values
