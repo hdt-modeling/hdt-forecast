@@ -153,14 +153,17 @@ class Basic_feeder:
                 result['time'].append(num)
                 for name in columns:
                     values = pooled[geo][num][name]
-                    if method=='mean':
-                        result[name].append(np.nanmean(values))
-                    elif method=='min':
-                        result[name].append(np.nanmin(values))
-                    elif method=='max':
-                        result[name].append(np.nanmax(values))
+                    if name == 'mobility_value':
+                        if method=='mean':
+                            result[name].append(np.nanmean(values))
+                        elif method=='min':
+                            result[name].append(np.nanmin(values))
+                        elif method=='max':
+                            result[name].append(np.nanmax(values))
+                        else:
+                            result[name].append(method(values))
                     else:
-                        result[name].append(method(values))
+                        result[name].append(np.nansum(values))
         result = pd.DataFrame(result)
             
         return result
