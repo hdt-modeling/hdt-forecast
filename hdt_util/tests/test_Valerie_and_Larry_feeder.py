@@ -73,8 +73,8 @@ class Valerie_and_Larry_tester:
                                                cumulated=cumulated,
                                                mobility_level=mobility_level)
         
-        avg_cases = self.feeder.average_pooling(cases, period, end_date+timedelta(days=10))
-        avg_mobility = self.feeder.average_pooling(mobility, period, end_date+timedelta(days=10))
+        avg_cases = self.feeder.pooling(cases, period, end_date+timedelta(days=10)) # this is case number, should be sum
+        avg_mobility = self.feeder.pooling(mobility, period, end_date+timedelta(days=10), method='mean') # this is mobility value, using mean
         
         end_date = end_date + timedelta(days=10)
         max_time = avg_cases['time'].max()
@@ -82,23 +82,23 @@ class Valerie_and_Larry_tester:
             for time in avg_cases['time'].unique():
                 temp_start_date = end_date - timedelta(days=int(period*(max_time-time) + period - 1))
                 temp_end_date = end_date - timedelta(days=int(period*(max_time-time)))
-                temp_cases = cases[cases['date'].apply(lambda x : temp_start_date <= x <= temp_end_date)]
-                temp_mobility = mobility[mobility['date'].apply(lambda x : temp_start_date <= x <= temp_end_date)]
+                temp_cases = cases[cases['date'].apply(lambda x : temp_start_date <= x <= temp_end_date)] #the sum
+                temp_mobility = mobility[mobility['date'].apply(lambda x : temp_start_date <= x <= temp_end_date)] #the average
                 
                 if temp_cases.shape[0] > 0:
                     value1 = avg_cases[(avg_cases['geo_value']==geo)&(avg_cases['time']==time)]['case_value'].values[0]
-                    value2 = np.mean(temp_cases[temp_cases['geo_value']==geo]['case_value'])
+                    value2 = np.nansum(temp_cases[temp_cases['geo_value']==geo]['case_value'])
                     assert abs(value1 - value2) < 1e-4, '{}, {}, {}'.format(value1, value2, abs(value1-value2))
-                else:
-                    assert avg_cases[(avg_cases['geo_value']==geo)&(avg_cases['time']==time)].isnull()['case_value'].values[0]
+                    #note that `temp_cases` might be an empty dataframe as the end_date of pooling is after the end_date of load_data              
                 
                 if temp_mobility.shape[0] > 0:
                     value1 = avg_mobility[(avg_mobility['geo_value']==geo)&(avg_mobility['time']==time)]['mobility_value'].values[0]
                     value2 = temp_mobility[temp_mobility['geo_value']==geo]['mobility_value'].values
                     n = value2.shape[0]
-                    value2 = n/period*np.mean(value2) + (period-n)/period*value2[-1]
+                    value2 = (n*np.mean(value2) + (period-n)*value2[-1])/period
                     assert abs(value1 - value2) < 1e-4, '{}, {}, {}'.format(value1, value2, abs(value1-value2))
                 else:
+                    #temp_mobility might be empty for the same reason. When this happens, the pooled data should be the same as the last available data
                     value1 = avg_mobility[(avg_mobility['geo_value']==geo)&(avg_mobility['time']==time)]['mobility_value'].values[0]
                     value2 = mobility[(mobility['geo_value']==geo)&(mobility['date']==mobility['date'].max())]['mobility_value'].values[0]
                     assert abs(value1 - value2) < 1e-4, '{}, {}, {}'.format(value1, value2, abs(value1-value2))
