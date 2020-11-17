@@ -79,10 +79,10 @@ class evaluator:
     
 class Valerie_and_Larry_evaluator(evaluator):
     
-    def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=10, metrics=[]):
+    def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=10, method='mean', metrics=[]):
         
         super(Valerie_and_Larry_evaluator, self).__init__(cache_loc)
-        self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, metrics)
+        self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, metrics)
     
     def evaluate_model(self, model_args, data_source_args=None):
         
