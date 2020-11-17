@@ -165,7 +165,7 @@ class Valerie_and_Larry_evaluator(evaluator):
                     prediction_length.append(i+1)
                     predicted_value.append(value)
                     temp = temp[temp['geo_value']==geo_value]
-                    temp = loader.average_pooling(temp, self.period, real_prediction_dates[i+1])
+                    temp = loader.pooling(temp, self.period, real_prediction_dates[i+1], method=self.method)
                     real_value.append(temp['case_value'].values[0])
                 
         return pd.DataFrame({'geo_value':geo_values,
