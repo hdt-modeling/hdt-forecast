@@ -7,7 +7,7 @@ def address_to_census(address, aggregation="block groups"):
 
     Args:
         address (str): One line street address
-        aggregation (str): Block Groups, Blocks, Tracts
+        aggregation (str): Census aggregation method: block groups, blocks, tracts
 
     Returns: 
         GEOID of selected aggregation
