@@ -25,5 +25,9 @@ setuptools.setup(
                         "scipy",
                         "tqdm",
                         "numpy",
-                        ]
+                        "censusgeocode",
+                        "forecasters",
+                        ],
+    dependency_links = ["../forecasters"]
 )
+
