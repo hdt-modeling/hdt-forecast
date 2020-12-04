@@ -1,6 +1,7 @@
 import censusgeocode as cg
 from geopy.geocoders import ArcGIS
 
+
 def address_to_census(address, aggregation="block groups"):
     """
     Converts street addresses to the GEOID of the selected aggregation choice
@@ -28,7 +29,7 @@ def address_to_census(address, aggregation="block groups"):
         g = geolocator.geocode(address)
         x = g.longitude
         y = g.latitude
-        result = cg.coordinates(x=x,y=y, returntype="geographies")
+        result = cg.coordinates(x=x, y=y, returntype="geographies")
         census_blocks = result["2010 Census Blocks"][0]
 
     STATE = census_blocks["STATE"]
