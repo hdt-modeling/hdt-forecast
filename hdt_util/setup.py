@@ -26,6 +26,7 @@ setuptools.setup(
                         "tqdm",
                         "numpy",
                         "censusgeocode",
+                        "geopy",
                         ],
 )
 

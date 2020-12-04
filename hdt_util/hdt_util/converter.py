@@ -1,5 +1,5 @@
 import censusgeocode as cg
-
+from geopy.geocoders import ArcGIS
 
 def address_to_census(address, aggregation="block groups"):
     """
@@ -19,8 +19,18 @@ def address_to_census(address, aggregation="block groups"):
     assert aggregation in OPTIONS, "The selected aggregation is not a valid option. Please select from the 3 possible choices: block groups, blocks, tracts"
 
     result = cg.onelineaddress(address, returntype="geographies")
-    geographies = result[0]["geographies"]
-    census_blocks = geographies["2010 Census Blocks"][0]
+
+    if result:
+        geographies = result[0]["geographies"]
+        census_blocks = geographies["2010 Census Blocks"][0]
+    else:
+        geolocator = ArcGIS()
+        g = geolocator.geocode(address)
+        x = g.longitude
+        y = g.latitude
+        result = cg.coordinates(x=x,y=y, returntype="geographies")
+        census_blocks = result["2010 Census Blocks"][0]
+
     STATE = census_blocks["STATE"]
     COUNTY = census_blocks["COUNTY"]
     TRACT = census_blocks["TRACT"]
@@ -29,10 +39,10 @@ def address_to_census(address, aggregation="block groups"):
 
     if str.lower(aggregation) in {"census block groups", "census block group", "block groups", "block group"}:
         # STATE+COUNTY+TRACT+BLOCK GROUP
-        return STATE + COUNTY + TRACT + BLOCK_GROUP
+        return (STATE + COUNTY + TRACT + BLOCK_GROUP)
     elif str.lower(aggregation) in {"census blocks", "census block", "blocks", "block"}:
         # STATE+COUNTY+TRACT+BLOCK
-        return STATE + COUNTY + TRACT + BLOCK
+        return (STATE + COUNTY + TRACT + BLOCK)
     elif str.lower(aggregation) in {"census tracts", "census tract", "tracts", "tract"}:
         # STATE+COUNTY+TRACT
-        return STATE + COUNTY + TRACT
+        return (STATE + COUNTY + TRACT)
