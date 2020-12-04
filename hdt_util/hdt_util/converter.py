@@ -29,7 +29,14 @@ def address_to_census(address, aggregation="block groups"):
         g = geolocator.geocode(address)
         x = g.longitude
         y = g.latitude
-        result = cg.coordinates(x=x, y=y, returntype="geographies")
+        result = None
+        # This while loop is meant to deal with errors thrown on portions of the requests from https://geocoding.geo.census.gov/geocoder/
+        # https://github.com/fitnr/censusgeocode/issues/18
+        while result is None:
+            try:
+                result = cg.coordinates(x=x, y=y, returntype="geographies")
+            except:
+                pass
         census_blocks = result["2010 Census Blocks"][0]
 
     STATE = census_blocks["STATE"]
