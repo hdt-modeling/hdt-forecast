@@ -7,7 +7,9 @@ def address_to_census(address, aggregation="block groups"):
     Converts street addresses to the GEOID of the selected aggregation choice
 
     Args:
-        address (str): One line street address (eg. "<Street>, <City>, <State>, <Zip>")
+        address (str): Address should be in the following format "<Street>, <City>, <State>, <Zip>". 
+            Addresses are not case sensitive and the spacing between commas and entries do not matter. The State can be given in longform or abbreviated. 
+            Examples: "1 Shields Avenue, Davis, CA, 95616", "1 Shields Avenue,Davis,California,95616", "1 shields avenue, davis,ca,   95616"
         aggregation (str): Census aggregation method: block groups, blocks, tracts
 
     Returns: 
@@ -30,7 +32,7 @@ def address_to_census(address, aggregation="block groups"):
         x = g.longitude
         y = g.latitude
         result = None
-        # This while loop is meant to deal with errors thrown on portions of the requests from https://geocoding.geo.census.gov/geocoder/
+        # This while loop is meant to deal with errors thrown on portions of the responses from https://geocoding.geo.census.gov/geocoder/
         # https://github.com/fitnr/censusgeocode/issues/18
         while result is None:
             try:
@@ -46,11 +48,8 @@ def address_to_census(address, aggregation="block groups"):
     BLOCK = census_blocks["BLOCK"]
 
     if str.lower(aggregation) in {"census block groups", "census block group", "block groups", "block group"}:
-        # STATE+COUNTY+TRACT+BLOCK GROUP
-        return (STATE + COUNTY + TRACT + BLOCK_GROUP)
+        return STATE + COUNTY + TRACT + BLOCK_GROUP
     elif str.lower(aggregation) in {"census blocks", "census block", "blocks", "block"}:
-        # STATE+COUNTY+TRACT+BLOCK
-        return (STATE + COUNTY + TRACT + BLOCK)
+        return STATE + COUNTY + TRACT + BLOCK
     elif str.lower(aggregation) in {"census tracts", "census tract", "tracts", "tract"}:
-        # STATE+COUNTY+TRACT
-        return (STATE + COUNTY + TRACT)
+        return STATE + COUNTY + TRACT
