@@ -25,7 +25,7 @@ def W1(y_true, forecasts, delay_distribution=None):
 
     Args:
         y_true: Observed case counts
-        forecasts: It trajectories
+        forecasts: forecasted It trajectory
         delay_distribution: Delay distribution for symptom onset and case reporting
 
     Returns: The 1-Wasserstein distance
