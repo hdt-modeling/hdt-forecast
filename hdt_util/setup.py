@@ -25,5 +25,8 @@ setuptools.setup(
                         "scipy",
                         "tqdm",
                         "numpy",
-                        ]
+                        "censusgeocode",
+                        "geopy",
+                        ],
 )
+
