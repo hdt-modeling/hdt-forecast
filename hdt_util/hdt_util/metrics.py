@@ -19,11 +19,21 @@ def MAE(y_true, y_pred):
     return Mean_Absolute_Error(y_true, y_pred)
 
 
-def W1(y_true, forecasts, delay_distribution, use_raw=False):
+def W1(y_true, forecasts, delay_distribution=None):
+    """
+    Computes the 1-Wasserstein distance between forecasted It trajectory convolved with the delay distribution and the observed case counts
+
+    Args:
+        y_true: Observed case counts
+        forecasts: It trajectories
+        delay_distribution: Delay distribution for symptom onset and case reporting
+
+    Returns: The 1-Wasserstein distance
+    """
     dtype = tf.float32
 
     delay_distribution = tf.squeeze(delay_distribution)
-    delay_distribtuion = tf.cast(delay_distribution, dtype=dtype)
+    delay_distribution = tf.cast(delay_distribution, dtype=dtype)
     delay_distribution = delay_distribution if delay_distribution.shape != tf.TensorShape(
         []) else tf.expand_dims(delay_distribution, axis=0)
 
@@ -39,7 +49,7 @@ def W1(y_true, forecasts, delay_distribution, use_raw=False):
 
     assert y_true.shape == forecasts.shape, "size of y_true and forecasts do not match"
 
-    if not use_raw:
+    if delay_distribution is not None:
         l = len(delay_distribution)
 
         delay_distribution = tf.reshape(
@@ -47,19 +57,13 @@ def W1(y_true, forecasts, delay_distribution, use_raw=False):
         init = tf.constant_initializer(delay_distribution.numpy())
         conv = Conv1D(1, l, kernel_initializer=init, use_bias=False)
 
-        y_true = tf.concat([y_true, tf.zeros(l)], axis=0)
         forecasts = tf.concat([forecasts, tf.zeros(l)], axis=0)
-
-        y_true = tf.reshape(y_true, shape=(1, -1, 1))
         forecasts = tf.reshape(forecasts, shape=(1, -1, 1))
-
-        y_true = conv(y_true)
         forecasts = conv(forecasts)
-
-        y_true = tf.squeeze(y_true)
         forecasts = tf.squeeze(forecasts)
 
     x = range(y_true.shape[0])
+    forecasts = forecasts[:y_true.shape[0]]
     d = wasserstein_distance(x, x, y_true, forecasts)
 
     return d
