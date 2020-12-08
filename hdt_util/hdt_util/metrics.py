@@ -21,7 +21,7 @@ def MAE(y_true, y_pred):
 
 def W1(y_true, forecasts, delay_distribution=None):
     """
-    Computes the 1-Wasserstein distance between forecasted It trajectory convolved with the delay distribution and the observed case counts
+    Computes the 1-Wasserstein distance between the forecasted It trajectory convolved with the delay distribution and the observed case counts.
 
     Args:
         y_true: Observed case counts
@@ -47,7 +47,8 @@ def W1(y_true, forecasts, delay_distribution=None):
     forecasts = forecasts if forecasts.shape != tf.TensorShape(
         []) else tf.expand_dims(forecasts, axis=0)
 
-    assert y_true.shape == forecasts.shape, "size of y_true and forecasts do not match"
+    assert y_true.shape == forecasts.shape, "size of 'y_true' and 'forecasts' should have the same shape, but found {} vs {}".format(
+        y_true.shape, forecasts.shape)
 
     if delay_distribution is not None:
         l = len(delay_distribution)
