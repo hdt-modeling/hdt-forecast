@@ -1,7 +1,8 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Conv1D
 from statsmodels.tsa.tsatools import lagmat
-import numpy as np
+
 
 class AR:
     """
@@ -13,9 +14,10 @@ class AR:
         scale: Scaling parameter 
         lag: The time lag between the leading indicator and reported case counts
     """
+
     def __init__(self, p):
         """
-        args:
+        Args:
             p (int): order of the AR model
         """
         self.p = p
@@ -42,7 +44,7 @@ class AR:
         """
         Scaling correction for AR(p) model to fit case counts.
 
-        args:
+        Args:
             leading_indicator: Covariate that is a leading indicator for case counts
             cases (nd.array): 1-dimensional array containing case counts
             offset (int): Offset for window of cases counts you want to correct over
@@ -74,7 +76,7 @@ class AR:
         series supplied. For values beyond the n=1 step the method uses the
         previously forecasted values to make the next forecast.
 
-        args:
+        Args:
             x (nd.array): array_like values to evaluate over
             n (int): How many time steps into the future you want to forecast
         """
@@ -100,7 +102,7 @@ class AR:
 class ARLIC(tf.keras.Model):
     """
     Modified autoregressive model for fitting leading indicators to reported
-    case counts. The models evaluates over the deconvolved leading indicator
+    case counts. The model evaluates over the deconvolved leading indicator
     which is then reconvolved with the case report delay distribution. These
     values are then fitted to the actual case counts to obtain the model.
 
@@ -111,6 +113,7 @@ class ARLIC(tf.keras.Model):
         delay_conv: Convolutional layer for convolving with the delay distribution
         lag (int): The time lag between the leading indicator and reported case counts 
     """
+
     def __init__(self, p, delay_dist=[1]):
         super(ARLIC, self).__init__()
         """
@@ -119,7 +122,8 @@ class ARLIC(tf.keras.Model):
             delay_dist: array_like, delay distribution for symptom onset and
               case reporting
         """
-        assert p>0 and isinstance(p, int), "p must be an integer greater than 0"
+        assert p > 0 and isinstance(
+            p, int), "p must be an integer greater than 0"
 
         self.p = p
         self.beta_conv = Conv1D(filters=1, kernel_size=p, use_bias=True)
@@ -144,7 +148,7 @@ class ARLIC(tf.keras.Model):
         series supplied. For values beyond the n=1 step the method uses the
         previously forecasted values to make the next forecast.
 
-        args:
+        Args:
             x (array_like): Values for the leading indicator
             n (int): How many time steps into the future you want to forecast
         """
@@ -162,12 +166,12 @@ class ARLIC(tf.keras.Model):
 
     def train_step(self, inputs):
         leading_indicator, cases_reported = inputs
-        leading_indicator = leading_indicator[:,:-1,:]
-        cases_reported = cases_reported[:,self.p:,:]
+        leading_indicator = leading_indicator[:, :-1, :]
+        cases_reported = cases_reported[:, self.p:, :]
 
         with tf.GradientTape() as tape:
             x_hat = self(leading_indicator, training=True)
-            cases_forecasts = self.delay_conv(x_hat) 
+            cases_forecasts = self.delay_conv(x_hat)
             loss = self.loss(cases_reported, cases_forecasts)
         variables = [
             var for var in self.trainable_variables if var.name[:3] != "lag"]
