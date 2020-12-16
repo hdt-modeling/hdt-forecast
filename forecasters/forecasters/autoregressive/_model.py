@@ -128,7 +128,7 @@ class ARLIC(tf.keras.Model):
         self.p = p
         self.beta_conv = Conv1D(filters=1, kernel_size=p, use_bias=True)
         self.delay_dist = tf.reshape(
-            delay_dist, shape=(-1, 1, 1), name="Weights")
+            delay_dist, shape=(-1, 1, 1), name="Weights")[::-1, :, :]
         kernel_initializer = tf.constant_initializer(self.delay_dist.numpy())
         self.delay_conv = Conv1D(
             filters=1,
@@ -138,6 +138,7 @@ class ARLIC(tf.keras.Model):
         )
         self.delay_conv.trainable = False
         self.lag = 0
+        self._fit = super().fit
 
     def call(self, x):
         return self.beta_conv(x)
@@ -166,11 +167,17 @@ class ARLIC(tf.keras.Model):
 
     def train_step(self, inputs):
         leading_indicator, cases_reported = inputs
+        assert leading_indicator.shape[1] == cases_reported.shape[1], "Size of x and y should be the same shape but found, {} vs {}".format(
+            leading_indicator.shape[1], cases_reported.shape[1])
         leading_indicator = leading_indicator[:, :-1, :]
         cases_reported = cases_reported[:, self.p:, :]
 
         with tf.GradientTape() as tape:
             x_hat = self(leading_indicator, training=True)
+            x_hat = tf.pad(
+                        x_hat,
+                        paddings=[[0, 0], [self.delay_dist.shape[0]-1, 0], [0, 0]],
+                    )
             cases_forecasts = self.delay_conv(x_hat)
             loss = self.loss(cases_reported, cases_forecasts)
         variables = [
@@ -181,3 +188,17 @@ class ARLIC(tf.keras.Model):
 
         self.compiled_metrics.update_state(cases_reported, cases_forecasts)
         return {m.name: m.result() for m in self.metrics}
+
+    def fit(self, args):
+        x = args["x"]
+        y = args["y"]
+        epochs = args["epochs"]
+        verbose = args["verbose"]
+        callbacks = args["callbacks"]
+        self._fit(
+            x=x,
+            y=y,
+            epochs=epochs,
+            verbose=verbose,
+            callbacks=callbacks,
+        )
