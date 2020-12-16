@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from forecasters import ArmadilloV1
+from forecasters.armadillo import ArmadilloV1
 
 
 def test_ArmadilloV1_eval(l=-1, args={}):
