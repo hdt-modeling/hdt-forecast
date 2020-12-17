@@ -3,7 +3,7 @@ import scipy
 from scipy.stats import gamma, norm
 from scipy.optimize import dual_annealing
 
-from .loss import hellinger
+from ._loss import hellinger
 
 DEFAULT_ARGS = {'ALPHA':0,
                 'BETA':0,
@@ -22,7 +22,7 @@ DEFAULT_ARGS = {'ALPHA':0,
                 'prediction_upper_bound':5000}
 
 
-class LVMM:
+class ArmadilloV1:
     """
     An implementation of Larry and Valerie's mobility model 
 
