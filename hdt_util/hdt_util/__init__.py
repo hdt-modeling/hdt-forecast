@@ -2,5 +2,5 @@
 """
 
 from .get_covidcast import CovidcastGetter
-from .data_feeder import Basic_feeder, Valerie_and_Larry_feeder
+from .data_feeder import Basic_feeder, ArmadilloV1_feeder
 

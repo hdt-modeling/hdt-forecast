@@ -4,11 +4,11 @@ import covidcast
 
 import numpy as np
 
-class Valerie_and_Larry_tester:
+class ArmadilloV1_tester:
     
     def __init__(self, cache_loc, merge=False):
         self.cache_loc = cache_loc
-        self.feeder = hdt_util.Valerie_and_Larry_feeder(cache_loc, merge)
+        self.feeder = hdt_util.ArmadilloV1_feeder(cache_loc, merge)
         self.merge = merge
         
     def test_data_loading(self, source, signal, start_date, end_date, level, count, cumulated, mobility_level):
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     period_choices = [1, 3, 4, 7]
     areas = ['CA', 'WA', 'AK']
     
-    tester = Valerie_and_Larry_tester(cache_loc)
+    tester = ArmadilloV1_tester(cache_loc)
     print('Testing data loading')
     tester.test_data_loading(source, signal, start_date, end_date, level, count, cumulated, mobility_level)
     print('Data loading finished')

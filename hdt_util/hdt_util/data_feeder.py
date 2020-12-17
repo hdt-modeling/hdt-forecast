@@ -269,7 +269,7 @@ class Basic_feeder:
         
         return input[input['geo_value'].apply(lambda x: x in area)].reset_index(inplace=False, drop=True)
     
-class Valerie_and_Larry_feeder(Basic_feeder):
+class ArmadilloV1_feeder(Basic_feeder):
     '''
     Link to explanation document : https://drive.google.com/drive/u/0/folders/13i2PVMlADp_vw8VqxlhzApSGzsjILbWC
     
@@ -298,7 +298,7 @@ class Valerie_and_Larry_feeder(Basic_feeder):
     '''
     
     def __init__(self, cache_loc=None, merge=True):
-        super(Valerie_and_Larry_feeder, self).__init__(cache_loc)
+        super(ArmadilloV1_feeder, self).__init__(cache_loc)
         self.merge = merge
             
     def get_data(self, 

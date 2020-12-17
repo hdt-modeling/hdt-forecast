@@ -7,7 +7,7 @@ import tqdm
 
 from . import metrics
 from . import data_feeder
-from forecasters.lv_mobility import LVMM
+from forecasters import ArmadilloV1
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -77,11 +77,11 @@ class evaluator:
     def MAE(self, y_true, y_pred):
         return metrics.MAE(y_true=y_true, y_pred=y_pred)
     
-class Valerie_and_Larry_evaluator(evaluator):
+class ArmadilloV1_evaluator(evaluator):
     
     def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=10, method='mean', metrics=[]):
         
-        super(Valerie_and_Larry_evaluator, self).__init__(cache_loc)
+        super(ArmadilloV1_evaluator, self).__init__(cache_loc)
         self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, metrics)
     
     def evaluate_model(self, model_args, data_source_args=None):
@@ -99,8 +99,8 @@ class Valerie_and_Larry_evaluator(evaluator):
         
         real_prediction_dates = [self.end_date] + real_prediction_dates # although self.end_date is included here, there would be no prediction of it
         
-        model = LVMM(**model_args)
-        loader = data_feeder.Valerie_and_Larry_feeder(self.cache_loc)
+        model = ArmadilloV1(**model_args)
+        loader = data_feeder.ArmadilloV1_feeder(self.cache_loc)
         
         if data_source_args is None:
             data_source_args = DEFAULT_DATA_SOURCE
