@@ -7,6 +7,7 @@ import numpy as np
 class Valerie_and_Larry_tester:
     
     def __init__(self, cache_loc, merge=False):
+        self.cache_loc = cache_loc
         self.feeder = hdt_util.Valerie_and_Larry_feeder(cache_loc, merge)
         self.merge = merge
         
@@ -22,7 +23,7 @@ class Valerie_and_Larry_tester:
                                                mobility_level=mobility_level)
         
         if cases is not None:
-            new_loader = hdt_util.CovidcastGetter(cache_loc)
+            new_loader = hdt_util.CovidcastGetter(self.cache_loc)
             #check cases
             signal_name = signal
             if cumulated:
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     count=True
     cumulated=False
     mobility_level=1
-    period_choices = [3, 4, 7]
+    period_choices = [1, 3, 4, 7]
     areas = ['CA', 'WA', 'AK']
     
     tester = Valerie_and_Larry_tester(cache_loc)
@@ -140,9 +141,9 @@ if __name__ == '__main__':
     tester.test_data_loading(source, signal, start_date, end_date, level, count, cumulated, mobility_level)
     print('Data loading finished')
     for period in period_choices:
-        print('Testing period {}'.format(period))
+        print('  Testing period {}'.format(period))
         tester.test_avg_pooling(source, signal, start_date, end_date, level, count, cumulated, mobility_level, period)
-        print('Period {} finished'.format(period))
+        print('  Period {} Passed'.format(period))
     print('Testing selection of area')
     tester.test_area_select(source, signal, start_date, end_date, level, count, cumulated, mobility_level, areas)
     print('Area selection finished')
