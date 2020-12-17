@@ -24,6 +24,7 @@ class TestARLIC:
         model.compile(
             optimizer=optimizer,
             loss=loss,
+            metrics=["mean_squared_error"]
         )
 
         args = {
