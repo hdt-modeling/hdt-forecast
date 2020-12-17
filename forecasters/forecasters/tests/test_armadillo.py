@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
-from forecasters.lv_mobility import LVMM
+from forecasters.armadillo import ArmadilloV1
 
 
-def test_LVMM_eval(l=-1, args={}):
+def test_ArmadilloV1_eval(l=-1, args={}):
     l = 16  # length of interval model trained on
     if not args:
         args = {'A': 0.29896900277215616,
@@ -20,7 +20,7 @@ def test_LVMM_eval(l=-1, args={}):
                        1.14250577e-04, 3.11001172e-05, 7.92829643e-06, 1.91668861e-06,
                        4.43499839e-07, 9.89135279e-08, 2.13800701e-08, 4.49814289e-09]}
 
-    model = LVMM(args=args)
+    model = ArmadilloV1(args=args)
 
     predictions = model._eval(
         M=model.args['M'],
@@ -35,7 +35,7 @@ def test_LVMM_eval(l=-1, args={}):
     assert predictions.shape[0] == 16
 
 
-def test_LVMM_forecast(l=-1, args={}):
+def test_ArmadilloV1_forecast(l=-1, args={}):
     l = 16  # length of interval model trained on
 
     args = {'A': 0.29896900277215616,
@@ -51,19 +51,20 @@ def test_LVMM_forecast(l=-1, args={}):
                    6.44387059e-03, 3.05949665e-03, 1.17096864e-03, 3.86226989e-04,
                    1.14250577e-04, 3.11001172e-05, 7.92829643e-06, 1.91668861e-06,
                    4.43499839e-07, 9.89135279e-08, 2.13800701e-08, 4.49814289e-09]}
-    model = LVMM(args=args)
+
+    model = ArmadilloV1(args=args)
 
     l2 = 25  # length of interval we want to forecast up to
 
     forecast = model.forecast(l2)
 
-    assert forecast.shape[0] == 25
+    assert forecast.shape[0] == 41
 
     forecast = model.forecast(l2, M=np.array(args['M']))
 
-    assert forecast.shape[0] == 25
+    assert forecast.shape[0] == 41
 
-    forecast = model.forecast(l2, M=np.array(args['M']), DC=np.array(args['DC']))
+    forecast = model.forecast(l2, M=np.array(
+        args['M']), DC=np.array(args['DC']))
 
-    assert forecast.shape[0] == 25
-
+    assert forecast.shape[0] == 41
