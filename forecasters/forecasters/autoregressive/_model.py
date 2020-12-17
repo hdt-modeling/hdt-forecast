@@ -162,6 +162,7 @@ class ARLIC(tf.keras.Model):
         for _ in range(n):
             forecast = self(x)[:, -1:, :]
             output.append(forecast)
+            forecast = tf.cast(forecast, dtype=x.dtype)
             x = tf.concat([x, forecast], axis=1)
         return tf.reshape(output, shape=-1)
 
