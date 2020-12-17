@@ -27,26 +27,29 @@ class Basic_feeder:
                                3 : 'part_time_work_prop',
                                4 : 'median_home_dwell_time'}
         
-    def query_response(self, 
-                       source='jhu-csse', 
-                       signal='deaths', 
-                       start_date=None,
-                       end_date=None, 
-                       level='state', 
-                       count=True, 
-                       cumulated=False):
+    def query_cases(self, 
+                    source='jhu-csse', 
+                    signal='deaths', 
+                    start_date=None,
+                    end_date=None, 
+                    level='state', 
+                    count=True, 
+                    cumulated=False):
         
         #check parameters
         assert isinstance(source, str), 'source should be a string'
         source = source.lower()
-        assert source in ['jhu-csse', 'usa-facts', 'indicator-combination'], 'source should be one of \'jhu-csse\', \'usa-facts\', and \'indicator-combination\''
+        assert source in ['jhu-csse', 'usa-facts'], 'source should be one of \'jhu-csse\' or \'usa-facts\''
         assert isinstance(signal, str), 'signal should be a string'
         signal = signal.lower()
-        assert signal in ['deaths', 'confirmed'], 'signal should be one of \'death\' and \'confirmed\''
-        assert (isinstance(start_date, datetime.date) or start_date is None) and (isinstance(end_date, datetime.date) or end_date is None), 'if start_date or end_date is provided, it must be a datetime.date object'
-        assert isinstance(level, str), 'level should be a string'
-        level = level.lower()
-        assert level in ['state', 'county'], 'level should be one of \'state\' and \'county\''
+        if signal in ['deaths', 'confirmed']:
+            None
+        else:
+            print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
+            signal = 'deaths'
+        
+        self._check_date_condition(start_date, end_date)
+        self._check_level_condition(level)
         assert isinstance(count, bool), 'count should be True or False'
         assert isinstance(cumulated, bool), 'cumulated should be True or False'
         
@@ -69,6 +72,90 @@ class Basic_feeder:
                                            geo_type=level)
         
         return case_data
+    
+    def query_leading_indicator(self, 
+                                source='fb-survey', 
+                                signal='smoothed_cli', 
+                                start_date=None,
+                                end_date=None, 
+                                level='state'):
+    
+        #check parameters
+        assert isinstance(source, str), 'source should be a string'
+        source = source.lower()
+        assert source in ['fb-survey', 'doctor-visits'], 'source should be one of \'fb-survey\' or \'doctor-visits\''
+        assert isinstance(signal, str), 'signal should be a string'
+        signal = signal.lower()
+        if source == 'fb-survey':
+            if signal in ['smoothed_cli', 'smoothed_hh_cmnty_cli']:
+                None
+            else:
+                print('signal not available, changed to \'smoothed_cli\' by default')
+                signal = 'smoothed_cli'
+        else: #source == 'doctor-visits'
+            if signal == 'smoothed_adj_cli':
+                None
+            else:
+                print('signal not available, changed to it automatically')
+                signal = 'smoothed_adj_cli'
+        
+        self._check_date_condition(start_date, end_date)
+        self._check_level_condition(level)
+        
+        case_data = self.data_loader.query(data_source=source,
+                                           signal=signal,
+                                           start_date=start_date,
+                                           forecast_date=end_date,
+                                           geo_type=level)
+        
+        return case_data
+    
+    def query_mobility(self, 
+                       signal=None, 
+                       start_date=None,
+                       end_date=None, 
+                       level='state'):
+        
+        self._check_date_condition(start_date, end_date)
+        self._check_level_condition(level)
+        
+        if isinstance(signal, int):
+            if 1<=signal<=4:
+                None
+            else:
+                print('when `signal` is an integer, it must be one of [1, 2, 3, 4], using 1 by default')
+                signal = 1
+            mobility_data = self.data_loader.query(data_source='safegraph',
+                                                   signal=self.safegraph_keys[signal],
+                                                   start_date=start_date,
+                                                   forecast_date=end_date,
+                                                   geo_type=level)
+        elif isinstance(signal, str):
+            signal = signal.lower()
+            possible_values = list(self.safegraph_keys.values())
+            if signal in possible_values:
+                None
+            else:
+                print('when `signal` is a string, it should be in {}, using {} by default'.format(possible_values, possible_values[0]))
+                signal = possible_values[0]
+            
+            mobility_data = self.data_loader.query(data_source='safegraph',
+                                                   signal=signal,
+                                                   start_date=start_date,
+                                                   forecast_date=end_date,
+                                                   geo_type=level)
+        
+        return mobility_data
+    
+    def _check_date_condition(self, start_date, end_date):
+        start_condition = isinstance(start_date, datetime.date) or start_date is None
+        end_condition = isinstance(end_date, datetime.date) or end_date is None
+        assert start_condition and end_condition, 'if start_date or end_date is provided, it must be a datetime.date object'
+        
+    def _check_level_condition(self, level):
+        assert isinstance(level, str), 'level should be a string'
+        level = level.lower()
+        assert level in ['state', 'county'], 'level should be one of \'state\' and \'county\''
 
     @staticmethod
     def pooling(input, period, end_date, method='mean'):
@@ -175,7 +262,7 @@ class Basic_feeder:
         
         Params:
         =======
-        area : List<str>, the list of areas interested in
+            area : List<str>, the list of areas interested in
         '''
         assert isinstance(area, list), '`area` should be a list of area codes'
         area = [val.lower() for val in area]
@@ -250,13 +337,9 @@ class Valerie_and_Larry_feeder(Basic_feeder):
         assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
         assert 1<=mobility_level<=4, 'mobility_level should be an integer between 1 and 4'
         
-        case_data = self.query_response(source, signal, start_date, end_date, level, count, cumulated)
+        case_data = self.query_cases(source, signal, start_date, end_date, level, count, cumulated)
         
-        mobility_data = self.data_loader.query(data_source='safegraph',
-                                               signal=self.safegraph_keys[mobility_level],
-                                               start_date=start_date,
-                                               forecast_date=end_date,
-                                               geo_type=level)
+        mobility_data = self.query_mobility(mobility_level, start_date, end_date, level)
         
         if case_data is not None:
             case_data = case_data[['geo_value', 'time_value', 'value']]
@@ -269,7 +352,6 @@ class Valerie_and_Larry_feeder(Basic_feeder):
             mobility_data.rename({'value':'mobility_value', 'time_value':'date'}, axis=1, inplace=True)
             mobility_data.reset_index(inplace=True, drop=True)
             mobility_data['time'] = mobility_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
-            
         
         if not self.merge:
             return case_data, mobility_data
