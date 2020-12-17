@@ -127,6 +127,7 @@ class ARLIC(tf.keras.Model):
 
         self.p = p
         self.beta_conv = Conv1D(filters=1, kernel_size=p, use_bias=True)
+        self.beta_li_conv = Conv1D(filters=1, kernel_size=p, use_bias=True)
         self.delay_dist = tf.reshape(
             delay_dist, shape=(-1, 1, 1), name="Weights")[::-1, :, :]
         kernel_initializer = tf.constant_initializer(self.delay_dist.numpy())
@@ -160,33 +161,40 @@ class ARLIC(tf.keras.Model):
         output = []
         x = tf.reshape(x, shape=(1, -1, 1))
         for _ in range(n):
-            forecast = self(x)[:, -1:, :]
+            forecast = self.beta_conv(x)[:,-1:,:]
             output.append(forecast)
-            x = tf.concat([x, forecast], axis=1)
+            li_forecast = self.beta_li_conv(x)[:,-1:,:]
+            li_forecast = tf.cast(li_forecast, dtype=x.dtype)
+            x = tf.concat([x, li_forecast], axis=1)
         return tf.reshape(output, shape=-1)
 
     def train_step(self, inputs):
         leading_indicator, cases_reported = inputs
         assert leading_indicator.shape[1] == cases_reported.shape[1], "Size of x and y should be the same shape but found, {} vs {}".format(
             leading_indicator.shape[1], cases_reported.shape[1])
-        leading_indicator = leading_indicator[:, :-1, :]
-        cases_reported = cases_reported[:, self.p:, :]
+        li = tf.pad(
+            leading_indicator[:,:-1,:],
+            paddings =[[0, 0], [self.p-1, 0], [0, 0]],
+        )
 
         with tf.GradientTape() as tape:
-            x_hat = self(leading_indicator, training=True)
+            li_forecasts = self.beta_li_conv(li)
+            x_hat = self.beta_conv(li, training=True)
             x_hat = tf.pad(
                         x_hat,
                         paddings=[[0, 0], [self.delay_dist.shape[0]-1, 0], [0, 0]],
                     )
             cases_forecasts = self.delay_conv(x_hat)
-            loss = self.loss(cases_reported, cases_forecasts)
+            loss_li = self.loss(leading_indicator[:,1:,:], li_forecasts)
+            loss_cases = self.loss(cases_reported[:,1:,:], cases_forecasts)
+            loss = loss_li + loss_cases
         variables = [
             var for var in self.trainable_variables if var.name[:3] != "lag"]
         gradients = tape.gradient(loss, variables)
         self.optimizer.apply_gradients(
             zip(gradients, [var for var in self.trainable_variables if var.name[:3] != "lag"]))
 
-        self.compiled_metrics.update_state(cases_reported, cases_forecasts)
+        self.compiled_metrics.update_state(cases_reported[:,1:,:], cases_forecasts)
         return {m.name: m.result() for m in self.metrics}
 
     def fit(self, args):
