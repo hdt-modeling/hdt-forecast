@@ -39,10 +39,10 @@ class Basic_feeder:
         #check parameters
         assert isinstance(source, str), 'source should be a string'
         source = source.lower()
-        assert source in ['jhu-csse', 'usa-facts'], 'source should be one of \'jhu-csse\' or \'usa-facts\''
+        assert source in ['jhu-csse', 'usa-facts', 'indicator-combination'], 'source should be one of [\'jhu-csse\', \'usa-facts\', \'indicator-combination\']'
         assert isinstance(signal, str), 'signal should be a string'
         signal = signal.lower()
-        if signal in ['deaths', 'confirmed']:
+        if signal in ['deaths', 'confirmed', 'confirmed_7dav_cumulative_num']:
             None
         else:
             print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
@@ -56,14 +56,15 @@ class Basic_feeder:
         #correct values for later calls
         if end_date is None:
             end_date = date.today()
-        if cumulated:
-            signal += '_cumulative'
-        else:
-            signal += '_incidence'
-        if count:
-            signal += '_num'
-        else:
-            signal += '_prop'
+        if source in ['jhu-csse', 'usa-facts']:
+            if cumulated:
+                signal += '_cumulative'
+            else:
+                signal += '_incidence'
+            if count:
+                signal += '_num'
+            else:
+                signal += '_prop'
         
         case_data = self.data_loader.query(data_source=source,
                                            signal=signal,
@@ -363,6 +364,32 @@ class ArmadilloV1_feeder(Basic_feeder):
                 full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='inner')
                 return full_data
     
+class ARLIC_feeder(Basic_feeder):
+    
+    def __init__(self, cache_loc):
+        super(ARLIC_feeder, self).__init__(cache_loc)
         
+    def get_data(self, 
+                 case_source='jhu-csse', 
+                 case_signal='deaths', 
+                 li_source='fb-survey',
+                 li_signal='smoothed_cli',
+                 start_date=None,
+                 end_date=None, 
+                 level='state'):
         
+        case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False)
+        case_data = case_data[['geo_value', 'time_value', 'value']]
+        case_data.rename({'value':'case_value', 'time_value':'date'}, axis=1, inplace=True)
+        case_data.reset_index(inplace=True, drop=True)
+
+        li_data = self.query_leading_indicator(li_source, li_signal, start_date, end_date, level)
+        li_data = li_data[['geo_value', 'time_value', 'value']]
+        li_data.rename({'value':'li_value', 'time_value':'date'}, axis=1, inplace=True)
+        li_data.reset_index(inplace=True, drop=True)
         
+        data = case_data.merge(li_data, on=['geo_value', 'date'], how='inner')
+        data['time'] = case_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
+        data['dayofweek'] = case_data['date'].apply(lambda x : x.dayofweek)
+            
+        return data
