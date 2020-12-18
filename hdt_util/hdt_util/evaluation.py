@@ -355,7 +355,6 @@ class ARLIC_evaluator(evaluator):
             pred = pred[-self.max_prediction_length:] # only keep the values from end_date to end_date+self.max_prediction_length
             
             days_available = temp_eval['time'].values - temp_last_day - 1 + self.max_prediction_length
-            print(days_available)
             
             for i, day in enumerate(days_available):
                 geo_values.append(geo_value)
