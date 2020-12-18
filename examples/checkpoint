@@ -1,0 +1,2 @@
+model_checkpoint_path: "ARLIC_MODEL_PATH"
+all_model_checkpoint_paths: "ARLIC_MODEL_PATH"
