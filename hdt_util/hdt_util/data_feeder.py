@@ -45,8 +45,12 @@ class Basic_feeder:
         if signal in ['deaths', 'confirmed', 'confirmed_7dav_cumulative_num']:
             None
         else:
-            print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
-            signal = 'deaths'
+            if source in ['jhu-csse', 'usa-facts']:
+                print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
+                signal = 'deaths'
+            else:
+                print('signal should be \'confirmed_7dav_cumulative_num\'')
+                signal = 'confirmed_7dav_cumulative_num'
         
         self._check_date_condition(start_date, end_date)
         self._check_level_condition(level)
@@ -370,8 +374,8 @@ class ARLIC_feeder(Basic_feeder):
         super(ARLIC_feeder, self).__init__(cache_loc)
         
     def get_data(self, 
-                 case_source='jhu-csse', 
-                 case_signal='deaths', 
+                 case_source='indicator-combination', 
+                 case_signal='confirmed_7dav_incidence_num', 
                  li_source='fb-survey',
                  li_signal='smoothed_cli',
                  start_date=None,
