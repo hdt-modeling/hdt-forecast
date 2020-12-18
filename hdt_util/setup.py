@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="hdt_utils", # Replace with your own username
     version="0.0.1",
-    author="Lifeng Wei, James Sharpnack",
+    author="Lifeng Wei, Stephen Sheng, Maria Jahja, James Sharpnack,",
     author_email="jsharpna@gmail.com",
     description="Utilities for backtesting, extracting Covid-19 data, evaluating performance",
     long_description=long_description,
@@ -27,6 +27,8 @@ setuptools.setup(
                         "numpy",
                         "censusgeocode",
                         "geopy",
+                        "cvxpy"
+                        "scikit-learn",
                         ],
 )
 
