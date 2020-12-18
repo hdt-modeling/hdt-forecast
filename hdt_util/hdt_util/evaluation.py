@@ -142,9 +142,11 @@ class ArmadilloV1_evaluator(evaluator):
             DC = scipy.stats.gamma.pdf(DC*self.period, scale=model.args['gamma_scale'], a=model.args['gamma_shape'])
             DC = DC/np.sum(DC) * model.args['death_rate']
             
-            model.fit(M = avg_temp_train['mobility_value'].values,
-                      DC = DC,
-                      y_true = avg_temp_train['case_value'].values)
+            args = {'M':avg_temp_train['mobility_value'].values,
+                    'DC':DC,
+                    'y_true':avg_temp_train['case_value'].values}
+            
+            model.fit(args)
             
             pred = model.forecast(l = int(num_period - 1 - avg_temp_train['time'].values[-1]) + effective_prediction_length) #'time' starts with 0, that's why we use `num_period - 1` here, as avg_temp_train.values[-1] is an index
             pred = pred[-effective_prediction_length:]

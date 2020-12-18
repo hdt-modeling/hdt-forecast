@@ -250,7 +250,7 @@ class Basic_feeder:
                         else:
                             result[name].append(method(values))
                     else:
-                        result[name].append(np.nansum(values))
+                        result[name].append(max(0, np.nansum(values)))
         result = pd.DataFrame(result)
             
         return result
