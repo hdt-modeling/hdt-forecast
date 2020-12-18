@@ -27,7 +27,7 @@ setuptools.setup(
                         "numpy",
                         "censusgeocode",
                         "geopy",
-                        "cvxpy"
+                        "cvxpy",
                         "scikit-learn",
                         ],
 )
