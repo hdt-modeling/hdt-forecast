@@ -46,7 +46,7 @@ class Delay:
         return convolved
 
     @staticmethod
-    def get_delay_dist_params(delays):
+    def get_delay_distribution_params(delays):
         """
         Fit a gamma delay distribution.
 
