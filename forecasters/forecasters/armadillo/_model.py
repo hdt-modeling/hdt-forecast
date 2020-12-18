@@ -49,20 +49,25 @@ class ArmadilloV1:
             if args.get(key, None) is None:
                 self.args[key] = DEFAULT_ARGS[key]
 
-    def fit(self, M, DC, y_true, loss=hellinger, initial_temp=20000, visit=2.0):
+    def fit(self, args, loss=hellinger, initial_temp=20000, visit=2.0):
         """
         Method for fitting model parameters. The mobility time series M and death curve DC are also saved to args.
         Best predictions is saved to the preds variable.
 
         Args:
-            M (numpy array, shape=(num_intervals)): mobility time series
-            DC (numpy array, shape=(num_intervals)): death curve
-            y_true: observed values
+            args (dictionary) with keys:
+                M (numpy array, shape=(num_intervals)): mobility time series
+                DC (numpy array, shape=(num_intervals)): death curve
+                y_true: observed values
             optimizer: optimizer for model
             loss: loss function
             initial_temp (float): initial temperature for dual annealing
             visit (float): another parameter for dual annealing
         """
+        M = args['M']
+        DC = args['DC']
+        y_true = args['y_true']
+        
         self.optim(M, DC, y_true, loss, initial_temp, visit)
 
         self.args["M"] = M

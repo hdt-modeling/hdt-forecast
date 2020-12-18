@@ -7,7 +7,6 @@ from statsmodels.tsa.tsatools import lagmat
 class AR:
     """
     Simple autoregressive model with scaling correction.
-
     Attributes:
         p: Order of the autoregressive model, AR(p)
         beta: Parameters for the AR(p) model
@@ -28,7 +27,6 @@ class AR:
     def fit(self, x, lam=1):
         """
         Fit an AR(p) model on x.
-
         Args:
             x: observed 
             lam: regularization parameter
@@ -43,7 +41,6 @@ class AR:
     def fit_scale(self, leading_indicator, cases, lag=0):
         """
         Scaling correction for AR(p) model to fit case counts.
-
         Args:
             leading_indicator: Covariate that is a leading indicator for case counts
             cases (nd.array): 1-dimensional array containing case counts
@@ -75,7 +72,6 @@ class AR:
         It will only forecast based on the most recent entries in the time
         series supplied. For values beyond the n=1 step the method uses the
         previously forecasted values to make the next forecast.
-
         Args:
             x (nd.array): array_like values to evaluate over
             n (int): How many time steps into the future you want to forecast
@@ -105,7 +101,6 @@ class ARLIC(tf.keras.Model):
     case counts. The model evaluates over the deconvolved leading indicator
     which is then reconvolved with the case report delay distribution. These
     values are then fitted to the actual case counts to obtain the model.
-
     Attributes:
         p: Order of the autoregressive model, AR(p)
         beta_conv: Convolutional layer for the AR(p) model parameters
@@ -149,7 +144,6 @@ class ARLIC(tf.keras.Model):
         Method only forecasts based on the most recent entries in the time
         series supplied. For values beyond the n=1 step the method uses the
         previously forecasted values to make the next forecast.
-
         Args:
             x (array_like): Values for the leading indicator
             n (int): How many time steps into the future you want to forecast
