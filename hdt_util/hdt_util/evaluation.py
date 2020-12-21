@@ -226,7 +226,7 @@ class ARLIC_evaluator(evaluator):
         
         delay_dist = model_args['delay_dist']
         model = ARLIC(**model_args)
-        optimizer = tf.keras.optimizers.Adam(lr=1)
+        optimizer = tf.keras.optimizers.Adam(lr=0.1)
         loss = tf.keras.losses.MSE
         
         model_path = "ARLIC_MODEL_PATH"
@@ -237,7 +237,7 @@ class ARLIC_evaluator(evaluator):
             save_best_only=True,
             save_weights_only=True
         )
-
+        
         callbacks = [
             checkpoint_callback,
         ]
@@ -314,7 +314,7 @@ class ARLIC_evaluator(evaluator):
             args = {
                 "x":temp_li,
                 "y":temp_cases,
-                "epochs":5000,
+                "epochs":10000,
                 "verbose":0,
                 "callbacks":callbacks
             } 
