@@ -229,24 +229,6 @@ class ARLIC_evaluator(evaluator):
         optimizer = tf.keras.optimizers.Adam(lr=0.1)
         loss = tf.keras.losses.MSE
         
-        def scheduler(epoch, lr):
-            LR = [0.1, 0.04, 0.01, 0.004, 0.001, 0.0004]
-            if epoch < 50000:
-                return LR[0]
-            elif epoch < 60000:
-                return LR[1]
-            elif epoch < 70000:
-                return LR[2]
-            elif epoch < 80000:
-                return LR[3]
-            elif epoch < 90000:
-                return LR[4]
-            else:
-                return LR[5]
-        
-        scheduler_callback = tf.keras.callbacks.LearningRateScheduler(
-            scheduler)
-        
         model_path = "ARLIC_MODEL_PATH"
         checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_path,
@@ -258,7 +240,6 @@ class ARLIC_evaluator(evaluator):
         
         callbacks = [
             checkpoint_callback,
-            scheduler_callback,
         ]
         
         model.compile(
@@ -333,7 +314,7 @@ class ARLIC_evaluator(evaluator):
             args = {
                 "x":temp_li,
                 "y":temp_cases,
-                "epochs":1000,
+                "epochs":10000,
                 "verbose":0,
                 "callbacks":callbacks
             } 
