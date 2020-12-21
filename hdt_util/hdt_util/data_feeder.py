@@ -35,7 +35,8 @@ class Basic_feeder:
                     end_date=None, 
                     level='state', 
                     count=True, 
-                    cumulated=False):
+                    cumulated=False,
+                    geo_values='*'):
         
         #check parameters
         assert isinstance(source, str), 'source should be a string'
@@ -75,7 +76,8 @@ class Basic_feeder:
                                            signal=signal,
                                            start_date=start_date,
                                            forecast_date=end_date,
-                                           geo_type=level)
+                                           geo_type=level,
+                                           geo_values=geo_values)
         
         return case_data
     
@@ -84,7 +86,8 @@ class Basic_feeder:
                                 signal='smoothed_cli', 
                                 start_date=None,
                                 end_date=None, 
-                                level='state'):
+                                level='state',
+                                geo_values='*'):
     
         #check parameters
         assert isinstance(source, str), 'source should be a string'
@@ -112,7 +115,8 @@ class Basic_feeder:
                                            signal=signal,
                                            start_date=start_date,
                                            forecast_date=end_date,
-                                           geo_type=level)
+                                           geo_type=level,
+                                           geo_values=geo_values)
         
         return case_data
     
@@ -120,7 +124,8 @@ class Basic_feeder:
                        signal=None, 
                        start_date=None,
                        end_date=None, 
-                       level='state'):
+                       level='state',
+                       geo_values='*'):
         
         self._check_date_condition(start_date, end_date)
         self._check_level_condition(level)
@@ -135,7 +140,8 @@ class Basic_feeder:
                                                    signal=self.safegraph_keys[signal],
                                                    start_date=start_date,
                                                    forecast_date=end_date,
-                                                   geo_type=level)
+                                                   geo_type=level,
+                                                   geo_values=geo_values)
         elif isinstance(signal, str):
             signal = signal.lower()
             possible_values = list(self.safegraph_keys.values())
@@ -149,7 +155,8 @@ class Basic_feeder:
                                                    signal=signal,
                                                    start_date=start_date,
                                                    forecast_date=end_date,
-                                                   geo_type=level)
+                                                   geo_type=level,
+                                                   geo_values=geo_values)
         
         return mobility_data
     
@@ -316,7 +323,8 @@ class ArmadilloV1_feeder(Basic_feeder):
                  level='state', 
                  count=True, 
                  cumulated=False,
-                 mobility_level=1):
+                 mobility_level=1,
+                 geo_values='*'):
         '''
         Returns data as ordered.
         
@@ -344,9 +352,9 @@ class ArmadilloV1_feeder(Basic_feeder):
         assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
         assert 1<=mobility_level<=4, 'mobility_level should be an integer between 1 and 4'
         
-        case_data = self.query_cases(source, signal, start_date, end_date, level, count, cumulated)
+        case_data = self.query_cases(source, signal, start_date, end_date, level, count, cumulated, geo_values)
         
-        mobility_data = self.query_mobility(mobility_level, start_date, end_date, level)
+        mobility_data = self.query_mobility(mobility_level, start_date, end_date, level, geo_values)
         
         if case_data is not None:
             case_data = case_data[['geo_value', 'time_value', 'value']]
@@ -383,14 +391,15 @@ class ARLIC_feeder(Basic_feeder):
                  li_signal='smoothed_cli',
                  start_date=None,
                  end_date=None, 
-                 level='state'):
+                 level='state',
+                 geo_values='*'):
         
-        case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False)
+        case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False, geo_values)
         case_data = case_data[['geo_value', 'time_value', 'value']]
         case_data.rename({'value':'case_value', 'time_value':'date'}, axis=1, inplace=True)
         case_data.reset_index(inplace=True, drop=True)
 
-        li_data = self.query_leading_indicator(li_source, li_signal, start_date, end_date, level)
+        li_data = self.query_leading_indicator(li_source, li_signal, start_date, end_date, level, geo_values)
         li_data = li_data[['geo_value', 'time_value', 'value']]
         li_data.rename({'value':'li_value', 'time_value':'date'}, axis=1, inplace=True)
         li_data.reset_index(inplace=True, drop=True)
