@@ -22,7 +22,7 @@ class Delay:
             delay_dist,
             3000,
             3000,
-            n_iters=500,
+            n_iters=1000,
             k=2,
         )
         deconvolved = np.clip(deconvolved, 0, np.inf)
