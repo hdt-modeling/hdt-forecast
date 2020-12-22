@@ -2,7 +2,7 @@
 
 ## Models
 1. ArmadilloV1: This model is an implementation of Larry and Valerie's mobility model for forecasting. This particular implementation can only be used for forecasting death counts.
-2. ARLIC: This model uses leading indicators to forecast case counts. It does so by using two separate autoregressive models. The first autoregressive model is fitted on the leading indicator which allows it to roll this covariate into the future. The second model uses the leading indicator as a covariate which is then convolved with a delay distribution to fit to case counts.
+2. ARLIC: This model uses leading indicators to forecast case counts. It does so by using two separate autoregressive models. The first autoregressive model is fitted on the leading indicator which allows it to roll this covariate into the future. The second model uses the leading indicator as a covariate which is convolved with a delay distribution and then fitted to case counts.
 
 ## Usage
 
