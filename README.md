@@ -2,7 +2,7 @@
 
 ## Usage
 
-You will want to have a virtual environment (I placed this in my HDT root directory)
+You will want to setup a new virtual environment with Python 3.8.5 installed.
 ```
 python -m venv env
 ```
