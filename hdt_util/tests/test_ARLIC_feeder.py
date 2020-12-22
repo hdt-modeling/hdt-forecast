@@ -13,17 +13,21 @@ class ARLIC_tester:
     def test_data_loading(self, case_source, case_signal, li_source, li_signal, start_date, end_date, level):
 
         data = self.feeder.get_data(case_source=case_source, 
-                                     case_signal=case_signal, 
-                                     li_source=li_source, 
-                                     li_signal=li_signal, 
-                                     start_date=start_date,
-                                     end_date=end_date, 
-                                     level=level)
+                                    case_signal=case_signal, 
+                                    li_source=li_source, 
+                                    li_signal=li_signal, 
+                                    start_date=start_date,
+                                    end_date=end_date, 
+                                    level=level)
 
         if data is not None:
             new_loader = hdt_util.CovidcastGetter(self.cache_loc)
             #check cases
-            signal_name = case_signal
+            if case_source in ['jhu-csse', 'usa-facts']:
+                signal_name = case_signal
+            else:
+                signal_name = case_signal + '_7dav'
+            signal_name += '_incidence_num'
             direct_cases = new_loader.query(data_source=case_source,
                                             signal=signal_name,
                                             forecast_date=end_date,
@@ -69,7 +73,7 @@ class ARLIC_tester:
 if __name__ == '__main__':
     cache_loc = 'test_data/request_cache'
     case_source = 'indicator-combination'
-    case_signal = 'confirmed_7dav_cumulative_num'
+    case_signal = 'confirmed'
     li_source = 'fb-survey'
     li_signal = 'smoothed_cli'
     start_date = date(2020, 9, 1)
