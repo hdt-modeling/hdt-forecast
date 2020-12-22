@@ -6,7 +6,7 @@ We built two packages. `forecasters` and `hdt_util`.
 
 `forecasters` contains the models we built to predict death cases and confirmed cases. For more details, please check `forecasters` folder.
 
-`hdt_util` contains other parts to build the whole train-tune-predict pipeline. For more details, please check `hdt_util` folder.
+`hdt_util` contains other parts to build the whole train-tune-predict pipeline, and also the backtesting framework. For more details, please check `hdt_util` folder.
 
 ## Installation
 
@@ -30,3 +30,7 @@ Run the tests for `hdt_util` with
 cd hdt_util/tests
 pytest
 ```
+
+## Examples
+
+For working examples about how to use different components of our work, please check notebooks in folder `examples`
