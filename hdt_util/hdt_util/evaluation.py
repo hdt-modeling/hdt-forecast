@@ -27,7 +27,7 @@ DEFAULT_DATA_SOURCE = {'source':'jhu-csse',
                        'li_source':'fb-survey',
                        'li_signal':'smoothed_cli',
                        'case_source':'indicator-combination',
-                       'case_signal':'confirmed_7dav_cumulative_num'}
+                       'case_signal':'confirmed'}
 
 
 class evaluator:
@@ -39,7 +39,7 @@ class evaluator:
         assert isinstance(cache_loc, str), '`cache_loc` must be a string'
         
         self.cache_loc = cache_loc
-        self.relations = {'MAE':self.MAE}
+        self.relations = {'MAE':self.MAE, 'W1':self.W1}
         self.delay = CURRENT_DELAY
         self._update_source(DEFAULT_DATA_SOURCE, True)
     
@@ -85,6 +85,10 @@ class evaluator:
     @staticmethod
     def MAE(y_true, y_pred):
         return metrics.MAE(y_true=y_true, y_pred=y_pred)
+    
+    @staticmethod
+    def W1(y_true, y_pred, dist):
+        return metrics.W1(y_true=y_true, y_pred=y_pred, delay_dist=dist)
     
     def _update_source(self, source, init=False):
         if init:
@@ -222,7 +226,7 @@ class ARLIC_evaluator(evaluator):
         super(ARLIC_evaluator, self).__init__(cache_loc)
         self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, delay)
     
-    def evaluate_model(self, model_args, geo_type='state', geo_values=None, data_source_args=None, metrics=[]):
+    def evaluate_model(self, model_args, geo_type='state', geo_values='*', data_source_args=None, metrics=[]):
         
         delay_dist = model_args['delay_dist']
         model = ARLIC(**model_args)
@@ -265,11 +269,9 @@ class ARLIC_evaluator(evaluator):
                                      li_signal=li_signal, 
                                      start_date=self.start_date,
                                      end_date=self.end_date, 
-                                     level=geo_type)
+                                     level=geo_type,
+                                     geo_values=geo_values)
         print('data loaded')
-        
-        if geo_values is not None:
-            train_data = loader.area_filter(train_data, geo_values)
         
         geo_value_candidates = train_data['geo_value'].unique()
         

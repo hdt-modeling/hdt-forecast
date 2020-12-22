@@ -44,15 +44,11 @@ class Basic_feeder:
         assert source in ['jhu-csse', 'usa-facts', 'indicator-combination'], 'source should be one of [\'jhu-csse\', \'usa-facts\', \'indicator-combination\']'
         assert isinstance(signal, str), 'signal should be a string'
         signal = signal.lower()
-        if signal in ['deaths', 'confirmed', 'confirmed_7dav_cumulative_num']:
+        if signal in ['deaths', 'confirmed']:
             None
-        else:
-            if source in ['jhu-csse', 'usa-facts']:
-                print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
-                signal = 'deaths'
-            else:
-                print('signal should be \'confirmed_7dav_cumulative_num\'')
-                signal = 'confirmed_7dav_cumulative_num'
+        if source in ['jhu-csse', 'usa-facts']:
+            print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
+            signal = 'deaths'
         
         self._check_date_condition(start_date, end_date)
         self._check_level_condition(level)
@@ -63,15 +59,19 @@ class Basic_feeder:
         if end_date is None:
             end_date = date.today()
         if source in ['jhu-csse', 'usa-facts']:
-            if cumulated:
-                signal += '_cumulative'
-            else:
-                signal += '_incidence'
-            if count:
-                signal += '_num'
-            else:
-                signal += '_prop'
+            None
+        else:
+            signal += '_7dav'
         
+        if cumulated:
+            signal += '_cumulative'
+        else:
+            signal += '_incidence'
+        if count:
+            signal += '_num'
+        else:
+            signal += '_prop'
+
         case_data = self.data_loader.query(data_source=source,
                                            signal=signal,
                                            start_date=start_date,
@@ -386,7 +386,7 @@ class ARLIC_feeder(Basic_feeder):
         
     def get_data(self, 
                  case_source='indicator-combination', 
-                 case_signal='confirmed_7dav_incidence_num', 
+                 case_signal='confirmed', 
                  li_source='fb-survey',
                  li_signal='smoothed_cli',
                  start_date=None,
