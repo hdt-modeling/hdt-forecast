@@ -15,8 +15,8 @@ from .conv1d import admm_deconvolution_v2
 
 class Delay:
     @staticmethod
-    def deconv(df, delay_dist):
-        train_cases = dow_adjust_cases(df, lam=10)
+    def new_deconv(counts, dayofweek, delay_dist):
+        train_cases = dow_adjust_cases(counts, dayofweek, lam=10)
         deconvolved = admm_deconvolution_v2(
             train_cases,
             delay_dist,
