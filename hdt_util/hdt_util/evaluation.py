@@ -307,9 +307,9 @@ class ARLIC_evaluator(evaluator):
             li_mean = tf.reduce_mean(temp_li)
             li_std = tf.math.reduce_std(temp_li)
             li = pd.DataFrame({'value':temp_li, 'time_value':temp_train['date'].values})
-            li.value = tf.clip_by_value((cases_std*(li.value-li_mean)/li_std) + cases_mean, clip_value_min=0,clip_value_max=float('inf'))       
+            temp_train.value = tf.clip_by_value((cases_std*(li.value-li_mean)/li_std) + cases_mean, clip_value_min=0,clip_value_max=float('inf')).numpy()   
 
-            temp_li = Delay.deconv(li, delay_dist)
+            temp_li = Delay.deconv(temp_train.value.tolist(), temp_train.dayofweek.tolist(), delay_dist)
             temp_li = tf.reshape(temp_li, shape=(1,-1,1))
             
             #fit model and reload best weights
