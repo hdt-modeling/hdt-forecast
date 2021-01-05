@@ -91,16 +91,3 @@ class imputation:
         imputed = function(possible_x)
         
         return imputed
-    
-    @staticmethod
-    def _find_common_interpolation(df):
-        
-        start = df.time.min()
-        end = df.time.max()
-        
-        for column in df.columns:
-            if column in ['time', 'date', 'geo']:
-                continue
-            
-            temp = df[df[column].notna()] # select non-na lines
-            
