@@ -104,7 +104,7 @@ class ArmadilloV1_evaluator(evaluator):
         super(ArmadilloV1_evaluator, self).__init__(cache_loc)
         self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, delay)
     
-    def evaluate_model(self, model_args, geo_type='state', geo_values=None, data_source_args=None, metrics=[]):
+    def evaluate_model(self, model_args, geo_type='state', geo_values='*', data_source_args=None, imputation=None, metrics=[]):
         
         num_days = (self.end_date - self.start_date).days + 1 # how many days in total in training data
         num_period = math.floor(num_days / self.period) # how many periods in the training data
@@ -139,7 +139,9 @@ class ArmadilloV1_evaluator(evaluator):
                                      level=geo_type, 
                                      count=count, 
                                      cumulated=cumulated,
-                                     mobility_level=mobility_level)
+                                     mobility_level=mobility_level,
+                                     geo_values=geo_values,
+                                     imputation=imputation)
         print('data loaded')
         if geo_values is not None:
             train_data = loader.area_filter(train_data, geo_values)
@@ -270,7 +272,8 @@ class ARLIC_evaluator(evaluator):
                                      start_date=self.start_date,
                                      end_date=self.end_date, 
                                      level=geo_type,
-                                     geo_values=geo_values)
+                                     geo_values=geo_values,
+                                     imputation=imputation)
         print('data loaded')
         
         geo_value_candidates = train_data['geo_value'].unique()
@@ -306,7 +309,6 @@ class ARLIC_evaluator(evaluator):
             #normalize li and deconvolve
             li_mean = tf.reduce_mean(temp_li)
             li_std = tf.math.reduce_std(temp_li)
-            li = pd.DataFrame({'value':temp_li, 'time_value':temp_train['date'].values})
             temp_train.value = tf.clip_by_value((cases_std*(li.value-li_mean)/li_std) + cases_mean, clip_value_min=0,clip_value_max=float('inf')).numpy()   
 
             temp_li = Delay.deconv(temp_train.value.tolist(), temp_train.dayofweek.tolist(), delay_dist)
@@ -340,8 +342,8 @@ class ARLIC_evaluator(evaluator):
             pred = tf.reshape(pred, shape=-1)[:-1].numpy() 
             pred = pred[-self.max_prediction_length:] # only keep the values from end_date to end_date+self.max_prediction_length
             
+            #extract prediction values that have its corresponding ground truth (instead of a missing value)
             days_available = temp_eval['time'].values - temp_last_day - 1 + self.max_prediction_length
-            
             for i, day in enumerate(days_available):
                 geo_values.append(geo_value)
                 prediction_length.append(day+1)

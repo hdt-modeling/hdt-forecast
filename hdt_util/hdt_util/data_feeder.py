@@ -3,6 +3,8 @@ In this file, each model will have its data feeder. Class names will be the mode
 '''
 
 from .get_covidcast import CovidcastGetter
+from .imputation import imputation
+
 import pandas as pd
 import numpy as np
 import datetime
@@ -324,7 +326,8 @@ class ArmadilloV1_feeder(Basic_feeder):
                  count=True, 
                  cumulated=False,
                  mobility_level=1,
-                 geo_values='*'):
+                 geo_values='*',
+                 imputation=None):
         '''
         Returns data as ordered.
         
@@ -367,6 +370,10 @@ class ArmadilloV1_feeder(Basic_feeder):
             mobility_data.rename({'value':'mobility_value', 'time_value':'date'}, axis=1, inplace=True)
             mobility_data.reset_index(inplace=True, drop=True)
             mobility_data['time'] = mobility_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
+            
+        if imputation:
+            case_data = imputation.impute_with_scipy(case_data, imputation)
+            mobility_data = imputation.impute_with_scipy(mobility_data, imputation)
         
         if not self.merge:
             return case_data, mobility_data
@@ -375,7 +382,7 @@ class ArmadilloV1_feeder(Basic_feeder):
                 full_data = None
                 return full_data
             if case_data is not None:
-                full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='inner')
+                full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='left')
                 return full_data
     
     
@@ -392,7 +399,8 @@ class ARLIC_feeder(Basic_feeder):
                  start_date=None,
                  end_date=None, 
                  level='state',
-                 geo_values='*'):
+                 geo_values='*',
+                 imputation=None):
         
         case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False, geo_values)
         case_data = case_data[['geo_value', 'time_value', 'value']]
@@ -404,8 +412,12 @@ class ARLIC_feeder(Basic_feeder):
         li_data.rename({'value':'li_value', 'time_value':'date'}, axis=1, inplace=True)
         li_data.reset_index(inplace=True, drop=True)
         
-        data = case_data.merge(li_data, on=['geo_value', 'date'], how='inner')
-        data['time'] = case_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
-        data['dayofweek'] = case_data['date'].apply(lambda x : x.dayofweek)
+        data = case_data.merge(li_data, on=['geo_value', 'date'], how='left')
+        data['time'] = data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
+        
+        if imputation:
+            data = imputation.impute_with_scipy(data, imputation)
+        
+        data['dayofweek'] = data['date'].apply(lambda x : x.dayofweek)
             
         return data
