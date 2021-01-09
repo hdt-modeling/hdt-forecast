@@ -14,12 +14,7 @@ def Mean_Absolute_Error(y_true, y_pred):
         y_true.shape[0], y_pred.shape[0])
     return np.mean(np.abs(y_true - y_pred))
 
-
-def MAE(y_true, y_pred):
-    return Mean_Absolute_Error(y_true, y_pred)
-
-
-def W1(y_true, forecasts, delay_dist):
+def Wasserstein(y_true, forecasts, delay_dist):
     """
     Computes the 1-Wasserstein distance between the forecasted It trajectory
     convolved with the delay distribution and the observed case counts. We
@@ -62,8 +57,24 @@ def W1(y_true, forecasts, delay_dist):
     forecasts = conv(forecasts)
     forecasts = tf.reshape(forecasts, shape=-1)
 
-    x = range(y_true.shape[0])
+    x = range(y_true.shape[0]+1)
     forecasts = forecasts[:y_true.shape[0]]
-    d = wasserstein_distance(x, x, y_true, forecasts)
+    
+    #add an "extra day" in the end to balance the total number
+    y_true = list(y_true.numpy())
+    y_pred = list(forecasts.numpy())
+    true_sum = sum(y_true)
+    pred_sum = sum(y_pred)
+    total = max(true_sum, pred_sum)
+    y_true.append(total - true_sum)
+    y_pred.append(total - pred_sum)
+    d = wasserstein_distance(x, x, y_true, y_pred)
 
     return d
+
+
+def MAE(y_true, y_pred):
+    return Mean_Absolute_Error(y_true, y_pred)
+
+def W1(y_true, y_pred, delay_dist):
+    return Wasserstein(y_true, y_pred, delay_dist)

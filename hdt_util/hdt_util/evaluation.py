@@ -4,10 +4,15 @@ import datetime
 import scipy
 import math
 import tqdm
+import tensorflow as tf
 
 from . import metrics
 from . import data_feeder
 from forecasters import ArmadilloV1, ARLIC
+
+from hdt_util.delay import Delay
+from hdt_util.conv1d import * 
+from hdt_util.weekday import Weekday, dow_adjust_cases
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -18,7 +23,12 @@ DEFAULT_DATA_SOURCE = {'source':'jhu-csse',
                        'signal':'deaths',
                        'count':True, 
                        'cumulated':False,
-                       'mobility_level':1}
+                       'mobility_level':1,
+                       'li_source':'fb-survey',
+                       'li_signal':'smoothed_cli',
+                       'case_source':'indicator-combination',
+                       'case_signal':'confirmed'}
+
 
 class evaluator:
     
@@ -29,7 +39,7 @@ class evaluator:
         assert isinstance(cache_loc, str), '`cache_loc` must be a string'
         
         self.cache_loc = cache_loc
-        self.relations = {'MAE':self.MAE}
+        self.relations = {'MAE':self.MAE, 'W1':self.W1}
         self.delay = CURRENT_DELAY
         self._update_source(DEFAULT_DATA_SOURCE, True)
     
@@ -57,8 +67,6 @@ class evaluator:
         assert isinstance(min_train, int) and min_train > 0, '`min_train` has to be a positive integer'
         assert math.ceil(((end_date - start_date).days - self.delay) / period) >= min_train, 'not enough training data for fitting model'
         
-        assert isinstance(metrics, list) and all(isinstance(name, str) for name in metrics), '`metrics` must be a list of names (as strings) of evaluation metrics'
-        
         if isinstance(method, str):
             method = method.lower()
         if method not in ['mean', 'max', 'min']:
@@ -78,12 +86,17 @@ class evaluator:
     def MAE(y_true, y_pred):
         return metrics.MAE(y_true=y_true, y_pred=y_pred)
     
+    @staticmethod
+    def W1(y_true, y_pred, dist):
+        return metrics.W1(y_true=y_true, y_pred=y_pred, delay_dist=dist)
+    
     def _update_source(self, source, init=False):
         if init:
             self.data_source = {}
-        for key, value in source:
+        for key, value in source.items():
             self.data_source[key] = value
     
+
 class ArmadilloV1_evaluator(evaluator):
     
     def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=10, method='mean', delay=CURRENT_DELAY):
@@ -91,7 +104,7 @@ class ArmadilloV1_evaluator(evaluator):
         super(ArmadilloV1_evaluator, self).__init__(cache_loc)
         self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, delay)
     
-    def evaluate_model(self, model_args, geo_type='state', geo_values=None, data_source_args=None, metrics=[]):
+    def evaluate_model(self, model_args, geo_type='state', geo_values='*', data_source_args=None, imputation=None, metrics=[]):
         
         num_days = (self.end_date - self.start_date).days + 1 # how many days in total in training data
         num_period = math.floor(num_days / self.period) # how many periods in the training data
@@ -126,7 +139,9 @@ class ArmadilloV1_evaluator(evaluator):
                                      level=geo_type, 
                                      count=count, 
                                      cumulated=cumulated,
-                                     mobility_level=mobility_level)
+                                     mobility_level=mobility_level,
+                                     geo_values=geo_values,
+                                     imputation=imputation)
         print('data loaded')
         if geo_values is not None:
             train_data = loader.area_filter(train_data, geo_values)
@@ -142,6 +157,7 @@ class ArmadilloV1_evaluator(evaluator):
         for geo_value in tqdm.tqdm(geo_value_candidates):
             
             temp_train = train_data[train_data['geo_value'] == geo_value]
+            temp_train = temp_train.sort_values(by='time')
             avg_temp_train = loader.pooling(input=temp_train, period=self.period, end_date=self.end_date, method=self.method)
             avg_temp_train.dropna(how='any', inplace=True) # the last entry may have nan for case numbers
             effective_prediction_length = len(real_as_of_dates)
@@ -203,25 +219,41 @@ class ArmadilloV1_evaluator(evaluator):
         evaluation_result = pd.DataFrame(evaluation_result)
                 
         return prediction_result, evaluation_result
-    
+
+
 class ARLIC_evaluator(evaluator):
     
-    def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=10, method='mean', delay=CURRENT_DELAY):
+    def __init__(self, cache_loc, start_date, end_date, max_prediction_length=1, period=7, min_train=30, method='mean', delay=CURRENT_DELAY):
         
-        super(ArmadilloV1_evaluator, self).__init__(cache_loc)
+        super(ARLIC_evaluator, self).__init__(cache_loc)
         self.update_parameters(start_date, end_date, max_prediction_length, period, min_train, method, delay)
     
-    def evaluate_model(self, model_args, geo_type='state', geo_values=None, data_source_args=None, metrics=[]):
+    def evaluate_model(self, model_args, geo_type='state', geo_values='*', data_source_args=None, metrics=[]):
         
-        num_days = (self.end_date - self.start_date).days + 1 # how many days in total in training data
-        real_prediction_date = self.end_date + datetime.timedelta(days=self.max_prediction_length) # dates that we have to make a prediction
-        real_as_of_date = real_prediction_date + datetime.timedelta(days=self.delay) # considering delay, what are the as_of_date we need to evaluation each prediction
-        today = datetime.date.today()
-        if real_as_of_dates[0] > today:
-            print('No enough data to evaluate the model! You have to wait until {} for evaluation data to be available'.format(real_as_of_dates[0]))
-            return None, None
-        
+        delay_dist = model_args['delay_dist']
         model = ARLIC(**model_args)
+        optimizer = tf.keras.optimizers.Adam(lr=1)
+        loss = tf.keras.losses.MSE
+        
+        model_path = "ARLIC_MODEL_PATH"
+        checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+            filepath=model_path,
+            verbose=0,
+            monitor="mean_squared_error",
+            save_best_only=True,
+            save_weights_only=True
+        )
+
+        callbacks = [
+            checkpoint_callback,
+        ]
+        
+        model.compile(
+            optimizer=optimizer,
+            loss=loss, 
+            metrics=[loss],
+        )
+
         loader = data_feeder.ARLIC_feeder(self.cache_loc)
         
         if data_source_args is not None:
@@ -233,21 +265,16 @@ class ARLIC_evaluator(evaluator):
         case_signal = self.data_source['case_signal']
         
         print('loading_data')
-        li_data = loader.get_data(source=li_source, 
-                                  signal=li_signal, 
-                                  start_date=self.start_date,
-                                  end_date=self.end_date, 
-                                  level=geo_type)
-        case_data = loader.get_data(source=case_source, 
-                                  signal=case_signal, 
-                                  start_date=self.start_date,
-                                  end_date=self.end_date, 
-                                  level=geo_type)
+        train_data = loader.get_data(case_source=case_source,
+                                     case_signal=case_signal,
+                                     li_source=li_source, 
+                                     li_signal=li_signal, 
+                                     start_date=self.start_date,
+                                     end_date=self.end_date, 
+                                     level=geo_type,
+                                     geo_values=geo_values,
+                                     imputation=imputation)
         print('data loaded')
-        if geo_values is not None:
-            li_data = loader.area_filter(li_data, geo_values)
-            case_data = loader.area_filter(case_data, geo_values)
-        train_data['value'] = train_data['value'].apply(lambda x : max(0, x))
         
         geo_value_candidates = train_data['geo_value'].unique()
         
@@ -258,39 +285,70 @@ class ARLIC_evaluator(evaluator):
         
         for geo_value in tqdm.tqdm(geo_value_candidates):
             
-            temp_train = train_data[train_data['geo_value'] == geo_value]
+            #prepara data
+            temp_data = train_data[train_data['geo_value'] == geo_value]
+            temp_last_day = temp_data['time'].max()
+            temp_first_day = temp_data['time'].min()
+            day_count_1 = temp_last_day - temp_first_day + 1
+            day_count_2 = self.min_train + self.max_prediction_length
+            if day_count_1 < day_count_2:
+                print('No enough data for {}. Requires at least {} days. Have {} days'.format(geo_value, day_count_2, day_count_1))
+                continue
+                
+            temp_data = temp_data.sort_values(by='time')
+            temp_train = temp_data[temp_data['time'] <= temp_last_day - self.max_prediction_length]
+            temp_eval = temp_data[temp_data['time'] > temp_last_day - self.max_prediction_length]
             
-            DC = avg_temp_train['time'].values
-            DC = scipy.stats.gamma.pdf(DC*self.period, scale=model.args['gamma_scale'], a=model.args['gamma_shape'])
-            DC = DC/np.sum(DC) * model.args['death_rate']
+            temp_cases = temp_train['case_value'].values
+            temp_cases = tf.reshape(temp_cases, shape=(1,-1,1))
             
-            args = {'M':avg_temp_train['mobility_value'].values,
-                    'DC':DC,
-                    'y_true':avg_temp_train['case_value'].values}
+            temp_li = temp_train['li_value'].values
+            cases_mean = tf.reduce_mean(temp_cases)
+            cases_std = tf.math.reduce_std(temp_cases)
             
+            #normalize li and deconvolve
+            li_mean = tf.reduce_mean(temp_li)
+            li_std = tf.math.reduce_std(temp_li)
+            temp_train.value = tf.clip_by_value((cases_std*(li.value-li_mean)/li_std) + cases_mean, clip_value_min=0,clip_value_max=float('inf')).numpy()   
+
+            temp_li = Delay.deconv(temp_train.value.tolist(), temp_train.dayofweek.tolist(), delay_dist)
+            temp_li = tf.reshape(temp_li, shape=(1,-1,1))
+            
+            #fit model and reload best weights
+            args = {
+                "x":temp_li,
+                "y":temp_cases,
+                "epochs":5000,
+                "verbose":0,
+                "callbacks":callbacks
+            } 
             model.fit(args)
+            model.load_weights(model_path).expect_partial()
             
-            pred = model.forecast(l = int(num_period - 1 - avg_temp_train['time'].values[-1]) + effective_prediction_length) #'time' starts with 0, that's why we use `num_period - 1` here, as avg_temp_train.values[-1] is an index
-            pred = pred[-effective_prediction_length:]
+            #prediction
+            temp_li = tf.pad(temp_li, paddings=[[0,0],[model.p-1,0],[0,0]])
+            temp_It = model(temp_li)
+            temp_It = tf.clip_by_value(temp_It, clip_value_min=0, clip_value_max=float('inf'))
+            temp_It = tf.pad(temp_It, paddings=[[0,0],[model.delay_dist.shape[0]-1,0],[0,0]]) 
             
-            for i, value in enumerate(pred):
-                temp = loader.get_data(source=source, 
-                                       signal=signal, 
-                                       start_date=real_prediction_dates[i],
-                                       end_date=real_as_of_dates[i], 
-                                       level=geo_type, 
-                                       count=count, 
-                                       cumulated=cumulated,
-                                       mobility_level=mobility_level)
-                if temp is None:
-                    print('start_data {}, end_date {}, result is None'.format(real_prediction_dates[i], real_as_of_dates[i]))
-                else:
-                    geo_values.append(geo_value)
-                    prediction_length.append(i+1)
-                    predicted_value.append(value)
-                    temp = temp[temp['geo_value']==geo_value]
-                    temp = loader.pooling(temp, self.period, real_prediction_dates[i+1], method=self.method)
-                    real_value.append(temp['case_value'].values[0])
+            n = self.max_prediction_length # predict until end_day
+            pred = model.forecast(temp_li, n)
+            pred = tf.reshape(pred, shape=(1,-1,1))
+            temp_It = tf.concat([temp_It, pred], axis=1)
+            temp_It = tf.clip_by_value(temp_It, clip_value_min=0, clip_value_max=float('inf'))
+            
+            pred = Delay.conv(temp_It, delay_dist)
+            
+            pred = tf.reshape(pred, shape=-1)[:-1].numpy() 
+            pred = pred[-self.max_prediction_length:] # only keep the values from end_date to end_date+self.max_prediction_length
+            
+            #extract prediction values that have its corresponding ground truth (instead of a missing value)
+            days_available = temp_eval['time'].values - temp_last_day - 1 + self.max_prediction_length
+            for i, day in enumerate(days_available):
+                geo_values.append(geo_value)
+                prediction_length.append(day+1)
+                predicted_value.append(pred[day])
+                real_value.append(temp_eval['case_value'].values[i])
                     
         prediction_result = pd.DataFrame({'geo_value':geo_values,
                                           'prediction_length':prediction_length,
@@ -317,4 +375,3 @@ class ARLIC_evaluator(evaluator):
         evaluation_result = pd.DataFrame(evaluation_result)
                 
         return prediction_result, evaluation_result
-                

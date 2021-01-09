@@ -7,3 +7,4 @@ from . import evaluation
 from . import conv1d
 from . import weekday
 from . import delay
+from .imputation import imputation

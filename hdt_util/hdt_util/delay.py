@@ -15,14 +15,14 @@ from .conv1d import admm_deconvolution_v2
 
 class Delay:
     @staticmethod
-    def deconv(df, delay_dist):
-        train_cases = dow_adjust_cases(df, lam=10)
+    def deconv(counts, dayofweek, delay_dist):
+        train_cases = dow_adjust_cases(counts, dayofweek, lam=10)
         deconvolved = admm_deconvolution_v2(
             train_cases,
             delay_dist,
             3000,
             3000,
-            n_iters=500,
+            n_iters=1000,
             k=2,
         )
         deconvolved = np.clip(deconvolved, 0, np.inf)

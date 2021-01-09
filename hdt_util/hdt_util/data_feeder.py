@@ -3,6 +3,8 @@ In this file, each model will have its data feeder. Class names will be the mode
 '''
 
 from .get_covidcast import CovidcastGetter
+from .imputation import imputation
+
 import pandas as pd
 import numpy as np
 import datetime
@@ -12,6 +14,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 BASE_DATE = date(2020, 2, 29)
+
 
 class Basic_feeder:
     
@@ -34,7 +37,8 @@ class Basic_feeder:
                     end_date=None, 
                     level='state', 
                     count=True, 
-                    cumulated=False):
+                    cumulated=False,
+                    geo_values='*'):
         
         #check parameters
         assert isinstance(source, str), 'source should be a string'
@@ -42,9 +46,9 @@ class Basic_feeder:
         assert source in ['jhu-csse', 'usa-facts', 'indicator-combination'], 'source should be one of [\'jhu-csse\', \'usa-facts\', \'indicator-combination\']'
         assert isinstance(signal, str), 'signal should be a string'
         signal = signal.lower()
-        if signal in ['deaths', 'confirmed', 'confirmed_7dav_cumulative_num']:
+        if signal in ['deaths', 'confirmed']:
             None
-        else:
+        if source in ['jhu-csse', 'usa-facts']:
             print('signal should be one of \'deaths\' and \'confirmed\', changed to \'deaths\' by default')
             signal = 'deaths'
         
@@ -57,20 +61,25 @@ class Basic_feeder:
         if end_date is None:
             end_date = date.today()
         if source in ['jhu-csse', 'usa-facts']:
-            if cumulated:
-                signal += '_cumulative'
-            else:
-                signal += '_incidence'
-            if count:
-                signal += '_num'
-            else:
-                signal += '_prop'
+            None
+        else:
+            signal += '_7dav'
         
+        if cumulated:
+            signal += '_cumulative'
+        else:
+            signal += '_incidence'
+        if count:
+            signal += '_num'
+        else:
+            signal += '_prop'
+
         case_data = self.data_loader.query(data_source=source,
                                            signal=signal,
                                            start_date=start_date,
                                            forecast_date=end_date,
-                                           geo_type=level)
+                                           geo_type=level,
+                                           geo_values=geo_values)
         
         return case_data
     
@@ -79,7 +88,8 @@ class Basic_feeder:
                                 signal='smoothed_cli', 
                                 start_date=None,
                                 end_date=None, 
-                                level='state'):
+                                level='state',
+                                geo_values='*'):
     
         #check parameters
         assert isinstance(source, str), 'source should be a string'
@@ -107,7 +117,8 @@ class Basic_feeder:
                                            signal=signal,
                                            start_date=start_date,
                                            forecast_date=end_date,
-                                           geo_type=level)
+                                           geo_type=level,
+                                           geo_values=geo_values)
         
         return case_data
     
@@ -115,7 +126,8 @@ class Basic_feeder:
                        signal=None, 
                        start_date=None,
                        end_date=None, 
-                       level='state'):
+                       level='state',
+                       geo_values='*'):
         
         self._check_date_condition(start_date, end_date)
         self._check_level_condition(level)
@@ -130,7 +142,8 @@ class Basic_feeder:
                                                    signal=self.safegraph_keys[signal],
                                                    start_date=start_date,
                                                    forecast_date=end_date,
-                                                   geo_type=level)
+                                                   geo_type=level,
+                                                   geo_values=geo_values)
         elif isinstance(signal, str):
             signal = signal.lower()
             possible_values = list(self.safegraph_keys.values())
@@ -144,7 +157,8 @@ class Basic_feeder:
                                                    signal=signal,
                                                    start_date=start_date,
                                                    forecast_date=end_date,
-                                                   geo_type=level)
+                                                   geo_type=level,
+                                                   geo_values=geo_values)
         
         return mobility_data
     
@@ -270,6 +284,7 @@ class Basic_feeder:
         
         return input[input['geo_value'].apply(lambda x: x in area)].reset_index(inplace=False, drop=True)
     
+
 class ArmadilloV1_feeder(Basic_feeder):
     '''
     Link to explanation document : https://drive.google.com/drive/u/0/folders/13i2PVMlADp_vw8VqxlhzApSGzsjILbWC
@@ -310,7 +325,9 @@ class ArmadilloV1_feeder(Basic_feeder):
                  level='state', 
                  count=True, 
                  cumulated=False,
-                 mobility_level=1):
+                 mobility_level=1,
+                 geo_values='*',
+                 imputation=None):
         '''
         Returns data as ordered.
         
@@ -338,9 +355,9 @@ class ArmadilloV1_feeder(Basic_feeder):
         assert isinstance(mobility_level, int), 'mobility_level should be an integer between 1 and 4'
         assert 1<=mobility_level<=4, 'mobility_level should be an integer between 1 and 4'
         
-        case_data = self.query_cases(source, signal, start_date, end_date, level, count, cumulated)
+        case_data = self.query_cases(source, signal, start_date, end_date, level, count, cumulated, geo_values)
         
-        mobility_data = self.query_mobility(mobility_level, start_date, end_date, level)
+        mobility_data = self.query_mobility(mobility_level, start_date, end_date, level, geo_values)
         
         if case_data is not None:
             case_data = case_data[['geo_value', 'time_value', 'value']]
@@ -353,6 +370,10 @@ class ArmadilloV1_feeder(Basic_feeder):
             mobility_data.rename({'value':'mobility_value', 'time_value':'date'}, axis=1, inplace=True)
             mobility_data.reset_index(inplace=True, drop=True)
             mobility_data['time'] = mobility_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
+            
+        if imputation:
+            case_data = imputation.impute_with_scipy(case_data, imputation)
+            mobility_data = imputation.impute_with_scipy(mobility_data, imputation)
         
         if not self.merge:
             return case_data, mobility_data
@@ -361,8 +382,9 @@ class ArmadilloV1_feeder(Basic_feeder):
                 full_data = None
                 return full_data
             if case_data is not None:
-                full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='inner')
+                full_data = case_data.merge(mobility_data, on=['geo_value', 'date', 'time'], how='left')
                 return full_data
+    
     
 class ARLIC_feeder(Basic_feeder):
     
@@ -370,26 +392,32 @@ class ARLIC_feeder(Basic_feeder):
         super(ARLIC_feeder, self).__init__(cache_loc)
         
     def get_data(self, 
-                 case_source='jhu-csse', 
-                 case_signal='deaths', 
+                 case_source='indicator-combination', 
+                 case_signal='confirmed', 
                  li_source='fb-survey',
                  li_signal='smoothed_cli',
                  start_date=None,
                  end_date=None, 
-                 level='state'):
+                 level='state',
+                 geo_values='*',
+                 imputation=None):
         
-        case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False)
+        case_data = self.query_cases(case_source, case_signal, start_date, end_date, level, True, False, geo_values)
         case_data = case_data[['geo_value', 'time_value', 'value']]
         case_data.rename({'value':'case_value', 'time_value':'date'}, axis=1, inplace=True)
         case_data.reset_index(inplace=True, drop=True)
 
-        li_data = self.query_leading_indicator(li_source, li_signal, start_date, end_date, level)
+        li_data = self.query_leading_indicator(li_source, li_signal, start_date, end_date, level, geo_values)
         li_data = li_data[['geo_value', 'time_value', 'value']]
         li_data.rename({'value':'li_value', 'time_value':'date'}, axis=1, inplace=True)
         li_data.reset_index(inplace=True, drop=True)
         
-        data = case_data.merge(li_data, on=['geo_value', 'date'], how='inner')
-        data['time'] = case_data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
-        data['dayofweek'] = case_data['date'].apply(lambda x : x.dayofweek)
+        data = case_data.merge(li_data, on=['geo_value', 'date'], how='left')
+        data['time'] = data['date'].apply(lambda x: (x.date() - BASE_DATE).days)
+        
+        if imputation:
+            data = imputation.impute_with_scipy(data, imputation)
+        
+        data['dayofweek'] = data['date'].apply(lambda x : x.dayofweek)
             
         return data

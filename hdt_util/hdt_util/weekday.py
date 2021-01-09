@@ -11,7 +11,7 @@ class Weekday:
     """Class to handle weekday effects."""
 
     @staticmethod
-    def get_params(sig, lam=10):
+    def get_params(counts, dayofweek, lam=10):
         """
         Estimate the fitted parameters of the Poisson model.
         Code taken from Aaron Rumack, with minor modifications.
@@ -39,37 +39,39 @@ class Weekday:
         differences of the corresponding columns of beta), to enforce smoothness.
         Third differences ensure smoothness without removing peaks or valleys.
 
-        Return a matrix of parameters: the entire vector of betas, for each time
-        series column in the data.
-
-        Args:
-            sig: signal to adjust, array
-            lam: penalty parameter, scalar
+        Params:
+        =======
+            counts: List<float>, counts data to be adjusted
+            dayofweek: List<int>, day of the week for each count
+            lam: float, optional, default 10, penalty parameter
 
         Returns:
-            beta: array of fitted parameters
-
+        ========
+            beta: array<float>, fitted parameters
         """
+        
         # construct design matrix
-        X = np.zeros((sig.shape[0], 6 + sig.shape[0]))
-        not_sunday = np.where(sig.index.dayofweek != 6)[0]
-        X[not_sunday, np.array(sig.index.dayofweek)[not_sunday]] = 1
-        X[np.where(sig.index.dayofweek == 6)[0], :6] = -1
-        X[:, 6:] = np.eye(X.shape[0])
+        L = len(counts)
+        X = np.zeros((L, 6+L))
+        for ind, day in enumerate(dayofweek):
+            if day!=6:
+                X[ind, day] = 1
+            else:
+                X[ind, :6] = -1
+            X[ind, 6+ind] = 1
 
-        npsig = np.array(sig)
-        beta = cp.Variable((X.shape[1]))
+        counts = np.array(counts)
+        beta = cp.Variable((6+L))
         lam_var = cp.Parameter(nonneg=True)
         lam_var.value = lam
 
-        ll = ((cp.matmul(npsig, cp.matmul(X, beta)) -
-               cp.sum(cp.exp(cp.matmul(X, beta)))
-               ) / X.shape[0]
-              )
-        penalty = (lam_var * cp.norm(cp.diff(beta[6:], 3), 1) / (X.shape[0] - 2)
-                   )  # L-1 Norm of third differences, rewards smoothness
+        ll = cp.matmul(counts, cp.matmul(X, beta)) - cp.sum(cp.exp(cp.matmul(X, beta))) 
+        ll = ll / L
+        diff = cp.diff(beta[6:], 3) # Here it has to be assumed that the data is continuous
+        penalty = lam_var * cp.norm(diff, 1) / (L - 2)# L-1 Norm of third differences, rewards smoothness
 
         try:
+            #Why don't directly use the second?
             prob = cp.Problem(cp.Minimize(-ll + lam_var * penalty))
             _ = prob.solve()
         except:
@@ -81,7 +83,7 @@ class Weekday:
         return beta.value
 
     @staticmethod
-    def calc_adjustment(beta, y, dates):
+    def calc_adjustment(beta, counts, dayofweek):
         """
         Apply the weekday adjustment to a specific time series.
 
@@ -99,46 +101,67 @@ class Weekday:
         and can divide by exp(alpha_{wd(t)}) to get a weekday-corrected ratio.
 
         """
-        wd_correction = np.zeros((y.shape[0]))
-        for wd in range(7):
-            mask = dates == wd
-            wd_correction[mask] = y[mask].value / (
-                np.exp(beta[wd]) if wd < 6 else np.exp(-np.sum(beta[:6]))
-            )
-        return wd_correction
+        
+        counts = np.array(counts).reahpe(-1)
+        dayofweek = np.array(dayofweek)
+        beta = beta[:7]
+        beta[6] = -sum(beta[:6])
+        beta = np.exp(beta)
+        
+        correction = np.zeros(counts.shape)
+        for day in range(7):
+            mask = dayofweek == day
+            correction[mask] = counts[mask] / beta[day]
+        return correction
 
 
-def dow_adjust_cases(loc_df, lam=None, lam_grid=None):
-    """Wrapper func to do dow adjustment"""
-
-    if lam_grid is None:
-        lam_grid = [1, 10, 25, 75, 100]
+def dow_adjust_cases(counts, dayofweek, lam=None, lam_grid=[1, 10, 25, 75, 100]):
+    """
+    Apply day of week adjustment with given choice of lambda, or choose one with LOO loss
+    
+    Params:
+    =======
+        counts: List<float>, counts data to be adjusted
+        dayofweek: List<int>, day of the week for each count
+        lam: float, optional, default None, penalty parameter if None, the best one in lam_grid will be used
+        lam_grid: List<float>, possible values for lam for tuning purpose
+    """
 
     if lam is not None:
-        params = Weekday.get_params(
-            loc_df.groupby("time_value").sum().value, lam)
+        params = Weekday.get_params(counts, dayofweek, lam)
         return np.exp(params[6:])
-
-    case_curve = loc_df.value.values
-    N = case_curve.shape[0]
-    loo = LeaveOneOut()
+    
+    N = len(counts)
     lam_scores = []
     for lam in lam_grid:
-        score = []
-        for train_i, test_i in loo.split(case_curve):
-            test_i = test_i[0]
-            if 1 < test_i < (N - 2):
-                raw_vals = loc_df.iloc[train_i].groupby(
-                    "time_value").sum().value
-                loo_params = Weekday.get_params(raw_vals, lam)
-                fit = np.exp(loo_params[6:])
-                preds_test = (fit[test_i - 1] + fit[test_i + 1]) / 2
-
-                score.append(float(preds_test) - float(case_curve[test_i]))
-        lam_scores.append(np.mean(np.square(score)))
+        errors = []
+        for test_ind in range(N):
+            # One problem here is that, Weekday.get_params assumes that the data is continuous. 
+            # But when we are doing this Leave-one-out corss validation, we remove one observation directly
+            # To compensate for this, we do not directly remove the value,
+            # but use the average value of one day before and one day after
+            # Originally in Maria's code this problem is ignored and the loss calculation is also wrong.
+            # She used the average of one day before and two days after as prediction
+            # TODO:
+            #     Find a suitable way to conduct this LOO parameter tuning
+            train_counts = counts.copy()
+            if test_ind == 0:
+                left = counts[0]
+                right = counts[1]
+            elif test_ind == N-1:
+                left = counts[-2]
+                right = counts[-1]
+            else:
+                left = counts[test_ind-1]
+                right = counts[test_ind+1]
+            train_counts[test_ind] = (train_counts[left] + train_counts[right]) / 2
+            loo_params = Weekday.get_params(train_counts, dayofweek, lam)
+            fit = np.exp(loo_params[6:])
+            errors.append(fit[test_ind] - counts[test_ind])
+            
+        lam_scores.append(np.mean(np.square(errors)))
 
     best_lam = lam_grid[np.argmin(lam_scores)]
-    params = Weekday.get_params(loc_df.groupby(
-        "time_value").sum().value, best_lam)
+    params = Weekday.get_params(counts, dayofweek, best_lam)
 
     return np.exp(params[6:])
