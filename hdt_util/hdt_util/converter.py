@@ -2,7 +2,7 @@ import censusgeocode as cg
 from geopy.geocoders import ArcGIS
 
 
-def address_to_census(address, aggregation="block groups"):
+def address_to_census(address, aggregation="blocks"):
     """
     Converts street addresses to the GEOID of the selected aggregation choice
 
