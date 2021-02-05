@@ -1,8 +1,8 @@
 import censusgeocode as cg
 from geopy.geocoders import ArcGIS
+import pandas as pd
 
-
-def address_to_census(address, aggregation="blocks"):
+def address_to_census(address, aggregation="blocks", max_requests = 100):
     """
     Converts street addresses to the GEOID of the selected aggregation choice
 
@@ -15,6 +15,8 @@ def address_to_census(address, aggregation="blocks"):
     Returns: 
         GEOID of selected aggregation
     """
+    if pd.isna(address):
+        return address
 
     OPTIONS = {"census block groups", "census block group", "block groups", "block group", "census blocks",
                "census block", "blocks", "block", "census tracts", "census tract", "tracts", "tract"}
@@ -34,12 +36,15 @@ def address_to_census(address, aggregation="blocks"):
         result = None
         # This while loop is meant to deal with errors thrown on portions of the responses from https://geocoding.geo.census.gov/geocoder/
         # https://github.com/fitnr/censusgeocode/issues/18
-        while result is None:
+        req_counter = 0
+        while result is None and req_counter < max_requests:
             try:
                 result = cg.coordinates(x=x, y=y, returntype="geographies")
             except:
                 pass
+            req_counter += 1
         census_blocks = result["2020 Census Blocks"][0]
+
 
     STATE = census_blocks["STATE"]
     COUNTY = census_blocks["COUNTY"]
