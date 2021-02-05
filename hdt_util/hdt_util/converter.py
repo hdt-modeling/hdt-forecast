@@ -25,7 +25,7 @@ def address_to_census(address, aggregation="blocks"):
 
     if result:
         geographies = result[0]["geographies"]
-        census_blocks = geographies["2010 Census Blocks"][0]
+        census_blocks = geographies["2020 Census Blocks"][0]
     else:
         geolocator = ArcGIS()
         g = geolocator.geocode(address)
@@ -39,7 +39,7 @@ def address_to_census(address, aggregation="blocks"):
                 result = cg.coordinates(x=x, y=y, returntype="geographies")
             except:
                 pass
-        census_blocks = result["2010 Census Blocks"][0]
+        census_blocks = result["2020 Census Blocks"][0]
 
     STATE = census_blocks["STATE"]
     COUNTY = census_blocks["COUNTY"]
