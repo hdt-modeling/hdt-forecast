@@ -3,6 +3,7 @@ import sqlalchemy as sqla
 import re
 import pandas as pd
 import datetime as dt
+from generateAreaTable import *
 
 def loadEngine(sqlfile):
 	"""
@@ -20,6 +21,10 @@ def loadEngine(sqlfile):
 	else:
 		# If the sql file doesn't exist, we create one
 		engine = buildEngine(sqlfile)
+		
+		# Add area table
+		addAreaTable(engine)
+
 	return engine
 
 
@@ -59,7 +64,7 @@ def buildEngine(sqlite_file):
 	engine = sqla.create_engine('sqlite:///' + sqlite_file)
 
 	# Put the first chunk into the survey
-	survey_chunk.to_sql("survey", engine, if_exists='replace')
+	survey_chunk.to_sql("survey", engine, if_exists='replace', index=False)
 	
 	# Then repeat the same procedure
 	for match in matches[1:]:
@@ -92,7 +97,7 @@ def loadToSQL(reader, engine, tablename):
 		chunk = cleanDate(chunk)
 		while not added:	
 			try:
-				chunk.to_sql(tablename, engine, if_exists='append')
+				chunk.to_sql(tablename, engine, if_exists='append', index=False)
 				added = True
 
 			except Exception as ex:
